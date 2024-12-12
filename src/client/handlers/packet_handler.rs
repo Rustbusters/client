@@ -1,8 +1,8 @@
-use crate::node::SimpleHost;
+use crate::client::RustbustersClient;
 use log::info;
 use wg_2024::packet::{Packet, PacketType};
 
-impl SimpleHost {
+impl RustbustersClient {
     pub(crate) fn handle_packet(&mut self, packet: Packet) {
         match packet.pack_type {
             PacketType::FloodRequest(flood_request) => {

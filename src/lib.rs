@@ -1,6 +1,5 @@
+mod client;
 
-mod node;
-
-pub use node::SimpleHost;
-pub use node::commands;
-pub use node::stats::*;
+pub use client::commands;
+pub use client::stats::*;
+pub use client::RustbustersClient;

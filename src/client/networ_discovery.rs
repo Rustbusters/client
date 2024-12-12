@@ -1,9 +1,10 @@
-use crate::node::SimpleHost;
-use log::info;
+use crate::client::RustbustersClient;
+use log::{info, warn};
 use wg_2024::network::SourceRoutingHeader;
+use wg_2024::packet::NodeType::Client;
 use wg_2024::packet::{FloodRequest, Packet, PacketType};
 
-impl SimpleHost {
+impl RustbustersClient {
     pub(crate) fn discover_network(&mut self) {
         // Generate a unique flood_id
         self.flood_id_counter += 1;
@@ -13,7 +14,7 @@ impl SimpleHost {
         let flood_request = FloodRequest {
             flood_id,
             initiator_id: self.id,
-            path_trace: vec![(self.id, self.node_type)],
+            path_trace: vec![(self.id, Client)],
         };
 
         // Create the packet without routing header (it's ignored for FloodRequest)
@@ -31,7 +32,12 @@ impl SimpleHost {
                 "Node {}: Sending FloodRequest to {} with flood_id {}",
                 self.id, neighbor_id, flood_id
             );
-            let _ = neighbor_sender.send(packet.clone());
+            if let Err(err) = neighbor_sender.send(packet.clone()) {
+                warn!(
+                    "Node {}: Unable to send FloodRequest to {}: {}",
+                    self.id, neighbor_id, err
+                );
+            }
         }
     }
 }

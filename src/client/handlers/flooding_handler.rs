@@ -1,11 +1,12 @@
-use crate::node::SimpleHost;
+use crate::client::RustbustersClient;
+use crate::commands::HostEvent::ControllerShortcut;
 use log::info;
 use log::warn;
 use wg_2024::network::SourceRoutingHeader;
+use wg_2024::packet::NodeType::Client;
 use wg_2024::packet::{FloodRequest, FloodResponse, Packet, PacketType};
-use crate::commands::HostEvent::ControllerShortcut;
 
-impl SimpleHost {
+impl RustbustersClient {
     pub(crate) fn handle_flood_response(&mut self, flood_response: FloodResponse) {
         for window in flood_response.path_trace.windows(2) {
             if let [(from_id, from_type), (to_id, to_type)] = window {
@@ -31,14 +32,14 @@ impl SimpleHost {
 
     pub(crate) fn handle_flood_request(&mut self, flood_request: FloodRequest, session_id: u64) {
         let mut new_path_trace = flood_request.path_trace.clone();
-        new_path_trace.push((self.id, self.node_type));
+        new_path_trace.push((self.id, Client));
 
         let flood_response = FloodResponse {
             flood_id: flood_request.flood_id,
             path_trace: new_path_trace.clone(),
         };
 
-        // If the packet was sent by this node, learn the topology without sending a response
+        // If the packet was sent by this client, learn the topology without sending a response
         if flood_request.initiator_id == self.id {
             info!(
                 "Node {}: Received own FloodRequest with flood_id {}. Learning topology...",
@@ -74,7 +75,6 @@ impl SimpleHost {
                 );
                 self.send_to_sc(ControllerShortcut(response_packet))
             }
-            
         } else {
             warn!(
                 "Node {}: Cannot send FloodResponse to initiator {}",

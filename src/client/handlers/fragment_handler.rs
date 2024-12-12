@@ -1,10 +1,10 @@
-use crate::node::SimpleHost;
+use crate::client::RustbustersClient;
+use crate::commands::HostEvent::{ControllerShortcut, MessageReceived};
 use log::{info, warn};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Ack, Fragment, Packet, PacketType};
-use crate::commands::HostEvent::{ControllerShortcut, MessageReceived};
 
-impl SimpleHost {
+impl RustbustersClient {
     pub(crate) fn handle_message_fragment(
         &mut self,
         fragment: Fragment,
@@ -24,7 +24,10 @@ impl SimpleHost {
                     );
                     self.stats.inc_messages_received();
                     if let Err(err) = self.controller_send.send(MessageReceived(msg)) {
-                        warn!("Node {}: Unable to send MessageReceived(...) to controller: {}", self.id, err);
+                        warn!(
+                            "Node {}: Unable to send MessageReceived(...) to controller: {}",
+                            self.id, err
+                        );
                     }
                 }
                 Err(err) => {
@@ -33,35 +36,7 @@ impl SimpleHost {
             }
         }
 
-        // Echo mode
         let fragment_index = fragment.fragment_index;
-        if self.echo_mode && session_id != 0 {
-            // Send the fragment back to the sender
-            let packet = Packet {
-                pack_type: PacketType::MsgFragment(fragment),
-                routing_header: SourceRoutingHeader {
-                    hop_index: 1,
-                    hops: source_routing_header
-                        .hops
-                        .iter()
-                        .rev()
-                        .cloned()
-                        .collect::<Vec<NodeId>>(),
-                },
-                session_id: 0, // TODO: find a better way to handle this (echo only one time when session_id is not 0)
-            };
-
-            let next_hop = packet.routing_header.hops[1];
-
-            if let Some(sender) = self.packet_send.get(&next_hop) {
-                let _ = sender.send(packet);
-            }
-
-            info!(
-                "Node {}: Echo to fragment {} of session {}",
-                self.id, fragment_index, session_id
-            );
-        }
 
         // Send an Acknowledgment
         let ack = Ack { fragment_index };
@@ -84,8 +59,11 @@ impl SimpleHost {
         let next_hop = ack_packet.routing_header.hops[1];
 
         if let Some(sender) = self.packet_send.get(&next_hop) {
-            if let Err(err) = sender.send(ack_packet.clone()){
-                warn!("Node {}: Error sending Ack for fragment {} to {}: {}", self.id, fragment_index, next_hop, err);
+            if let Err(err) = sender.send(ack_packet.clone()) {
+                warn!(
+                    "Node {}: Error sending Ack for fragment {} to {}: {}",
+                    self.id, fragment_index, next_hop, err
+                );
                 self.send_to_sc(ControllerShortcut(ack_packet));
                 info!("Node {}: Sending ack through SC", self.id);
             } else {
@@ -106,17 +84,20 @@ impl SimpleHost {
     }
 
     /// Insert the fragment in the pending_received map at index fragment_index.
-    /// 
+    ///
     /// Return true if all fragments have been received
     fn set_pending(&mut self, session_id: u64, fragment: Fragment) -> bool {
         let fragment_index = fragment.fragment_index;
         let total_n_fragments = fragment.total_n_fragments;
         // insert the fragment in the pending_received map at index fragment_index
         let fragments = vec![None; fragment.total_n_fragments as usize];
-        let entry = self.pending_received.entry(session_id).or_insert((fragments, 0));
+        let entry = self
+            .pending_received
+            .entry(session_id)
+            .or_insert((fragments, 0));
         entry.0[fragment_index as usize] = Some(fragment);
         entry.1 += 1;
-        
+
         entry.1 == total_n_fragments
     }
 }

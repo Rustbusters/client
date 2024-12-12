@@ -1,17 +1,26 @@
-use crate::node::SimpleHost;
+use crate::client::RustbustersClient;
 use log::info;
 
-impl SimpleHost {
+impl RustbustersClient {
     pub(crate) fn handle_ack(&mut self, session_id: u64, fragment_index: u64) {
         // Update stats
         self.stats.inc_acks_received();
-        
+
         // Remove the acked fragment from the pending_sent list
         self.pending_sent.remove(&(session_id, fragment_index));
-        
+
         // Check if all fragments with key (session_id, _) have been acked
-        if self.pending_sent.iter().filter(|((key, _), _)| *key == session_id).collect::<Vec<_>>().is_empty() {
-            info!("Node {}: All fragments of session {} acked", self.id, session_id);
+        if self
+            .pending_sent
+            .iter()
+            .filter(|((key, _), _)| *key == session_id)
+            .collect::<Vec<_>>()
+            .is_empty()
+        {
+            info!(
+                "Node {}: All fragments of session {} acked",
+                self.id, session_id
+            );
         }
     }
 }

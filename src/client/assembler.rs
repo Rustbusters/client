@@ -1,13 +1,14 @@
-use crate::node::messages::Message;
-use crate::node::SimpleHost;
+use crate::client::messages::Message;
+use crate::client::RustbustersClient;
 
-impl SimpleHost {
+impl RustbustersClient {
     pub(crate) fn reassemble_fragments(&mut self, session_id: u64) -> Result<Message, String> {
         match self.pending_received.remove(&session_id) {
             None => Err(format!("No fragments for session {}", session_id)),
             Some(fragments) => {
                 let concatenated: Result<Vec<u8>, &str> =
-                    fragments.0
+                    fragments
+                        .0
                         .into_iter()
                         .try_fold(Vec::new(), |mut acc, f| match f {
                             Some(frammento) => {
@@ -16,7 +17,7 @@ impl SimpleHost {
                             }
                             None => Err("Frammento mancante"),
                         });
-                
+
                 if let Ok(byte_array) = concatenated {
                     // Trova la lunghezza effettiva della stringa (fino al primo zero)
                     let len = byte_array

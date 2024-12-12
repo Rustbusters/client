@@ -1,11 +1,11 @@
-use crate::node::messages::Message;
-use crate::node::SimpleHost;
+use crate::client::messages::Message;
+use crate::client::RustbustersClient;
+use crate::commands::HostEvent;
 use log::{debug, info};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Packet, PacketType};
-use crate::commands::HostEvent;
 
-impl SimpleHost {
+impl RustbustersClient {
     pub(crate) fn send_random_message(&mut self, destination_id: NodeId) {
         // Compute the route to the destination
         if let Some(route) = self.compute_route(destination_id) {

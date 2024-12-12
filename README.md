@@ -1,3 +1,2 @@
-# node
-Generic node that sends and receives packets from other nodes.
-This code will be used only for testing purposes.
+# Client
+Isaia's client implementation for the Advanced Programming Course 2024-2025 at UNITN
