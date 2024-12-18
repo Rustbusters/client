@@ -1,5 +1,5 @@
-use crate::client::messages::Message;
 use crate::client::RustbustersClient;
+use common_utils::Message;
 use wg_2024::packet::{Fragment, FRAGMENT_DSIZE};
 
 impl RustbustersClient {

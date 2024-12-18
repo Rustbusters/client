@@ -1,5 +1,5 @@
-use crate::client::messages::Message;
 use crate::client::RustbustersClient;
+use common_utils::Message;
 
 impl RustbustersClient {
     pub(crate) fn reassemble_fragments(&mut self, session_id: u64) -> Result<Message, String> {

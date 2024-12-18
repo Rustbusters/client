@@ -1,6 +1,5 @@
-use crate::client::messages::Message;
 use crate::client::RustbustersClient;
-use crate::commands::HostEvent;
+use common_utils::{HostEvent, Message};
 use log::{debug, info};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Packet, PacketType};
@@ -14,7 +13,7 @@ impl RustbustersClient {
             let session_id = self.session_id_counter;
 
             // // Serialize and fragment the message
-            let message = Message::Custom(
+            let message = Message::Text(
                 format!("Hello from {} with session {}. This is a random message. Bla Bla Bla Things\
                  to make the message longer for testing purposes and see if and how fragmentation \
                  works. I hope it works. QuackableQuackableQuackableQuackableQuackableQuackableQuackable\

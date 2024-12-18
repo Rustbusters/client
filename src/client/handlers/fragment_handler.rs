@@ -1,5 +1,5 @@
 use crate::client::RustbustersClient;
-use crate::commands::HostEvent::{ControllerShortcut, MessageReceived};
+use common_utils::HostEvent::{ControllerShortcut, MessageReceived};
 use log::{info, warn};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Ack, Fragment, Packet, PacketType};

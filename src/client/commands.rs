@@ -1,27 +1,6 @@
-use crate::client::messages::Message;
-use crate::client::stats::Stats;
 use crate::client::RustbustersClient;
-use crossbeam_channel::Sender;
+use common_utils::{HostCommand, HostEvent};
 use log::warn;
-use wg_2024::network::NodeId;
-use wg_2024::packet::Packet;
-
-#[derive(Debug, Clone)]
-pub enum HostCommand {
-    SendRandomMessage(NodeId),
-    DiscoverNetwork,
-    StatsRequest,
-    AddSender(NodeId, Sender<Packet>),
-    RemoveSender(NodeId),
-}
-
-#[derive(Debug, Clone)]
-pub enum HostEvent {
-    MessageSent(Message),
-    MessageReceived(Message),
-    StatsResponse(Stats),
-    ControllerShortcut(Packet),
-}
 
 impl RustbustersClient {
     pub(crate) fn handle_command(&mut self, command: HostCommand) {

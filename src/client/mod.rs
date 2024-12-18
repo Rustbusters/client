@@ -1,16 +1,13 @@
 mod assembler;
-pub mod commands;
+mod commands;
 mod disassembler;
 mod handlers;
-mod messages;
 mod packet_sender;
 mod routing;
-pub(crate) mod stats;
 
-use crate::client::stats::Stats;
-use crate::commands::HostEvent;
 use crate::ui::setup_ui;
-use commands::HostCommand;
+
+use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select, Receiver, Sender};
 use log::{error, info};
 use petgraph::prelude::GraphMap;
@@ -59,11 +56,13 @@ impl RustbustersClient {
             session_id_counter: 173, // arbitrary value
             pending_sent: HashMap::new(),
             pending_received: HashMap::new(),
-            stats: Stats::default(),
+            stats: Stats::new(),
         }
     }
 
     pub fn run(&mut self) {
+        thread::spawn(setup_ui);
+
         // Start network discovery
         info!("Client {} started network discovery", self.id);
         self.discover_network();
