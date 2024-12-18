@@ -7,22 +7,14 @@ use wg_2024::packet::NodeType::Client;
 use wg_2024::packet::{FloodRequest, FloodResponse, Packet, PacketType};
 
 impl RustbustersClient {
-    pub(crate) fn handle_flood_response(&mut self, flood_response: FloodResponse) {
+    pub(crate) fn handle_flood_response(&mut self, flood_response: &FloodResponse) {
         for window in flood_response.path_trace.windows(2) {
             if let [(from_id, from_type), (to_id, to_type)] = window {
                 self.known_nodes.insert(*from_id, *from_type);
                 self.known_nodes.insert(*to_id, *to_type);
 
                 // Update topology
-                let from_to = self.topology.entry(*from_id).or_default();
-                if !from_to.contains(to_id) {
-                    from_to.push(*to_id);
-                }
-
-                let to_from = self.topology.entry(*to_id).or_default();
-                if !to_from.contains(from_id) {
-                    to_from.push(*from_id);
-                }
+                self.topology.add_edge(*from_id, *to_id, 1.0);
             }
         }
 
@@ -31,6 +23,7 @@ impl RustbustersClient {
     }
 
     pub(crate) fn handle_flood_request(&mut self, flood_request: FloodRequest, session_id: u64) {
+    pub(crate) fn handle_flood_request(&mut self, flood_request: &FloodRequest, session_id: u64) {
         let mut new_path_trace = flood_request.path_trace.clone();
         new_path_trace.push((self.id, Client));
 
@@ -45,7 +38,7 @@ impl RustbustersClient {
                 "Node {}: Received own FloodRequest with flood_id {}. Learning topology...",
                 self.id, flood_request.flood_id
             );
-            self.handle_flood_response(flood_response);
+            self.handle_flood_response(&flood_response);
             return;
         }
 
@@ -73,14 +66,14 @@ impl RustbustersClient {
                     "Node {}: Error sending FloodResponse to initiator {}: {}",
                     self.id, flood_request.initiator_id, err
                 );
-                self.send_to_sc(ControllerShortcut(response_packet))
+                self.send_to_sc(ControllerShortcut(response_packet));
             }
         } else {
             warn!(
                 "Node {}: Cannot send FloodResponse to initiator {}",
                 self.id, flood_request.initiator_id
             );
-            self.send_to_sc(ControllerShortcut(response_packet))
+            self.send_to_sc(ControllerShortcut(response_packet));
         }
     }
 }

@@ -10,14 +10,14 @@ impl RustbustersClient {
                     "Node {}: Received FloodRequest with flood_id {}",
                     self.id, flood_request.flood_id
                 );
-                self.handle_flood_request(flood_request, packet.session_id);
+                self.handle_flood_request(&flood_request, packet.session_id);
             }
             PacketType::FloodResponse(flood_response) => {
                 info!(
                     "Node {}: Received FloodResponse with flood_id {}",
                     self.id, flood_response.flood_id
                 );
-                self.handle_flood_response(flood_response);
+                self.handle_flood_response(&flood_response);
             }
             PacketType::MsgFragment(fragment) => {
                 // Handle incoming message fragments

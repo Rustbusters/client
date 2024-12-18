@@ -3,18 +3,20 @@ pub mod commands;
 mod disassembler;
 mod handlers;
 mod messages;
-mod networ_discovery;
 mod packet_sender;
-mod router;
+mod routing;
 pub(crate) mod stats;
 
 use crate::client::stats::Stats;
 use crate::commands::HostEvent;
+use crate::ui::setup_ui;
 use commands::HostCommand;
 use crossbeam_channel::{select, Receiver, Sender};
 use log::{error, info};
-use rand::{rng, Rng};
+use petgraph::prelude::GraphMap;
+use petgraph::Undirected;
 use std::collections::HashMap;
+use std::thread;
 use std::time::Duration;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{Fragment, NodeType, Packet};
@@ -26,7 +28,7 @@ pub struct RustbustersClient {
     packet_recv: Receiver<Packet>,
     packet_send: HashMap<NodeId, Sender<Packet>>,
     known_nodes: HashMap<NodeId, NodeType>,
-    topology: HashMap<NodeId, Vec<NodeId>>,
+    topology: GraphMap<NodeId, f32, Undirected>,
     flood_id_counter: u64,
     session_id_counter: u64,
     // (session_id, fragment_index) -> packet
@@ -52,7 +54,7 @@ impl RustbustersClient {
             packet_recv,
             packet_send,
             known_nodes: HashMap::new(),
-            topology: HashMap::new(),
+            topology: GraphMap::new(),
             flood_id_counter: 73,    // arbitrary value
             session_id_counter: 173, // arbitrary value
             pending_sent: HashMap::new(),
@@ -65,6 +67,7 @@ impl RustbustersClient {
         // Start network discovery
         info!("Client {} started network discovery", self.id);
         self.discover_network();
+
         // Handle incoming packets
         select! {
             // Handle incoming packets

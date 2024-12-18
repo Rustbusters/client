@@ -8,7 +8,7 @@ use wg_2024::packet::{Packet, PacketType};
 impl RustbustersClient {
     pub(crate) fn send_random_message(&mut self, destination_id: NodeId) {
         // Compute the route to the destination
-        if let Some(route) = self.compute_route(destination_id) {
+        if let Some(route) = self.find_weighted_path(destination_id) {
             // Increment session_id_counter
             self.session_id_counter += 1;
             let session_id = self.session_id_counter;
