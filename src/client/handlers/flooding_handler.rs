@@ -1,6 +1,5 @@
-use common_utils::HostEvent::ControllerShortcut;
 use crate::client::RustbustersClient;
-use crate::ui::{MessageSSE, MESSAGE_CHANNEL};
+use common_utils::HostEvent::ControllerShortcut;
 use log::info;
 use log::warn;
 use wg_2024::network::SourceRoutingHeader;
@@ -24,16 +23,6 @@ impl RustbustersClient {
     }
 
     pub(crate) fn handle_flood_request(&mut self, flood_request: &FloodRequest, session_id: u64) {
-        MESSAGE_CHANNEL
-            .send(MessageSSE::new(
-                self.id,
-                format!(
-                    "Received FloodRequest with flood_id {}",
-                    flood_request.flood_id
-                ),
-            ))
-            .unwrap();
-
         let mut new_path_trace = flood_request.path_trace.clone();
         new_path_trace.push((self.id, Client));
 

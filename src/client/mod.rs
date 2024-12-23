@@ -5,21 +5,18 @@ mod handlers;
 mod packet_sender;
 mod routing;
 
-use crate::ui::setup_ui;
-
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select, Receiver, Sender};
 use log::{error, info};
 use petgraph::prelude::GraphMap;
 use petgraph::Undirected;
 use std::collections::HashMap;
-use std::thread;
 use std::time::Duration;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{Fragment, NodeType, Packet};
 
 pub struct RustbustersClient {
-    id: NodeId,
+    pub(crate) id: NodeId,
     controller_send: Sender<HostEvent>,
     controller_recv: Receiver<HostCommand>,
     packet_recv: Receiver<Packet>,
@@ -61,7 +58,7 @@ impl RustbustersClient {
     }
 
     pub fn run(&mut self) {
-        thread::spawn(setup_ui);
+        self.run_ui();
 
         // Start network discovery
         info!("Client {} started network discovery", self.id);
