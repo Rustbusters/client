@@ -5,21 +5,18 @@ mod handlers;
 mod packet_sender;
 mod routing;
 
-use crate::ui::setup_ui;
-
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select, Receiver, Sender};
 use log::{error, info};
 use petgraph::prelude::GraphMap;
 use petgraph::Undirected;
 use std::collections::HashMap;
-use std::thread;
 use std::time::Duration;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{Fragment, NodeType, Packet};
 
 pub struct RustbustersClient {
-    id: NodeId,
+    pub(crate) id: NodeId,
     controller_send: Sender<HostEvent>,
     controller_recv: Receiver<HostCommand>,
     packet_recv: Receiver<Packet>,
@@ -61,7 +58,7 @@ impl RustbustersClient {
     }
 
     pub fn run(&mut self) {
-        thread::spawn(setup_ui);
+        self.run_ui();
 
         // Start network discovery
         info!("Client {} started network discovery", self.id);
@@ -74,7 +71,7 @@ impl RustbustersClient {
                 if let Ok(packet) = packet_res {
                     self.handle_packet(packet);
                 } else {
-                    error!("Node {} - Error in receiving packet", self.id);
+                    error!("Client {} - Error in receiving packet", self.id);
                 }
             },
             // Handle SC commands
@@ -82,7 +79,7 @@ impl RustbustersClient {
                 if let Ok(cmd) = command {
                     self.handle_command(cmd);
                 } else {
-                    error!("Node {} - Error in receiving command", self.id);
+                    error!("Client {} - Error in receiving command", self.id);
                 }
             },
             default(Duration::from_millis(100)) => {
@@ -93,9 +90,9 @@ impl RustbustersClient {
 
     pub(crate) fn send_to_sc(&mut self, event: HostEvent) {
         if self.controller_send.send(event).is_ok() {
-            info!("Node {} - Sent NodeEvent to SC", self.id);
+            info!("Client {} - Sent NodeEvent to SC", self.id);
         } else {
-            error!("Node {} - Error in sending event to SC", self.id);
+            error!("Client {} - Error in sending event to SC", self.id);
         }
     }
 }

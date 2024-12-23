@@ -18,7 +18,7 @@ impl RustbustersClient {
             .is_empty()
         {
             info!(
-                "Node {}: All fragments of session {} acked",
+                "Client {}: All fragments of session {} acked",
                 self.id, session_id
             );
         }

@@ -13,16 +13,12 @@ The client implements the functionalities related to the drone network, such as:
 It also implements a UI external and indipendent from the SC.
 
 ## The UI
-The UI is implemented using a simple WebServer. The assets for the UI must be inserted in the `static` folder of Network Initializer.
+The UI is implemented using a simple WebServer. The assets for the UI must be inserted in the `static/client/tonini` folder of Network Initializer.
 
-The Server is started by default on `localhost:8000`, but it can be changed in the `Rocket.toml` file in the root of the Network Initializer project.
-```toml
-[default]
-address="localhost"
-port=8080
-```
+The Server is started by default on `localhost:7373` with tiny_http.
 
 #### Communication between Rust backend and the frontend
-- The `rocket` server uses SSE (Server-Sent Events) to send updates to the client autonomously.
-- The client uses the APIs provided by the server to interact with the network.
+- The frontend uses tiny_http defined endpoints to communicate with the backend.
+- The backend uses the `tungstenite` library to communicate with the frontend via WebSockets.
+  > The WSS is started on `localhost:7374` and the frontend connects to it.
 

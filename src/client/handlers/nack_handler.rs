@@ -15,16 +15,16 @@ impl RustbustersClient {
 
         match self.pending_sent.get(&(session_id, fragment_index)) {
             None => {
-                warn!("Node {}: Nack for unknown fragment", self.id);
+                warn!("Client {}: Nack for unknown fragment", self.id);
             }
             Some(packet) => {
                 if let Dropped = nack_type {
-                    info!("Node {}: Resending fragment {}", self.id, fragment_index);
+                    info!("Client {}: Resending fragment {}", self.id, fragment_index);
                     // TODO: decide if the fragment and message counters should be incremented on resend, only on ack or always
                     if let Some(sender) = self.packet_send.get(&packet.routing_header.hops[1]) {
                         if let Err(err) = sender.send(packet.clone()) {
                             warn!(
-                                "Node {}: Unable to resend fragment {}: {}",
+                                "Client {}: Unable to resend fragment {}: {}",
                                 self.id, fragment_index, err
                             );
                         } else {
@@ -33,18 +33,17 @@ impl RustbustersClient {
                     }
                 } else {
                     match nack_type {
-                        NackType::ErrorInRouting(_) => {
-                            // TODO: implement this
-                            unimplemented!(
-                                "Node {}: Nack for fragment {} with type {:?}",
-                                self.id,
-                                fragment_index,
-                                nack_type
+                        NackType::ErrorInRouting(drone) => {
+                            warn!(
+                                "Client {}: Nack for fragment {} with type {:?}",
+                                self.id, fragment_index, nack_type
                             );
+                            self.topology.remove_node(drone);
+                            self.discover_network();
                         }
                         NackType::DestinationIsDrone | NackType::UnexpectedRecipient(_) => {
                             warn!(
-                                "Node {}: Nack for fragment {} with type {:?}",
+                                "Client {}: Nack for fragment {} with type {:?}",
                                 self.id, fragment_index, nack_type
                             );
                         }

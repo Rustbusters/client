@@ -1,63 +1,53 @@
+mod request_handler;
+mod websocket;
+
+use crate::RustbustersClient;
 use lazy_static::lazy_static;
-use rocket::fs::FileServer;
-use rocket::response::stream::{Event, EventStream};
-use rocket::{get, post, routes, State};
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::broadcast::{channel, Sender};
+use std::sync::Mutex;
+use std::thread;
+use tiny_http::Server;
 use wg_2024::network::NodeId;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct MessageSSE {
-    sent_by: NodeId,
-    content: String,
-    timestamp: String,
+const HTTP_PORT: u16 = 7373;
+
+lazy_static! {
+    pub(crate) static ref THREADS: Mutex<Vec<thread::JoinHandle<()>>> = Mutex::new(Vec::new());
 }
 
-impl MessageSSE {
-    pub(crate) fn new(sent_by: NodeId, content: String) -> Self {
-        Self {
-            sent_by,
-            content,
-            timestamp: "ACASO".to_string(),
+lazy_static! {
+    pub(crate) static ref CLIENTS: Mutex<Vec<NodeId>> = Mutex::new(Vec::new());
+}
+
+impl RustbustersClient {
+    pub(crate) fn run_ui(&self) {
+        // log the content of Clients
+        let mut clients = CLIENTS.lock().unwrap();
+
+        // if it is empty, run the http server
+        if clients.is_empty() {
+            let http_handle = thread::spawn(run_http_server);
+            let client_id = self.id.clone();
+            let websocket_handle =
+                thread::spawn(move || websocket::run_websocket_server(client_id));
+
+            THREADS.lock().unwrap().push(http_handle);
+            THREADS.lock().unwrap().push(websocket_handle);
         }
+
+        // add the client to the list
+        clients.push(self.id);
     }
 }
 
-// Global channel for SSE messages
-lazy_static! {
-    pub(crate) static ref MESSAGE_CHANNEL: Sender<MessageSSE> = {
-        let (tx, _) = channel(100);
-        tx
-    };
-}
-
-#[rocket::main]
-pub(crate) async fn setup_ui() -> Result<(), rocket::Error> {
-    rocket::build()
-        .manage(Arc::new(MESSAGE_CHANNEL.clone()))
-        .mount("/", routes![send_message_to, stream])
-        .mount("/", FileServer::from("static"))
-        .launch()
-        .await?;
-
-    Ok(())
-}
-
-// post -> body of request { message: String, dst: NodeId }
-#[post("/send-message-to", data = "<message>")]
-async fn send_message_to(message: String) -> &'static str {
-    MESSAGE_CHANNEL.send(MessageSSE::new(0, message)).unwrap();
-    "bella"
-}
-
-#[get("/stream")]
-fn stream(rx: &State<Arc<Sender<MessageSSE>>>) -> EventStream![] {
-    let mut rx1 = rx.subscribe();
-
-    EventStream! {
-        while let Ok(msg) = rx1.recv().await {
-            yield Event::json(&msg);
+fn run_http_server() {
+    println!("Visit http://localhost:{HTTP_PORT}");
+    let http_server = Server::http(format!("0.0.0.0:{HTTP_PORT}")).unwrap();
+    loop {
+        if let Ok(Some(request)) = http_server.try_recv() {
+            match request_handler::handle_request(request) {
+                Ok(()) => {}
+                Err(e) => eprintln!("Error handling request: {e}"),
+            }
         }
     }
 }
