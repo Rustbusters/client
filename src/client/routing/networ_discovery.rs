@@ -29,12 +29,12 @@ impl RustbustersClient {
 
         for (&neighbor_id, neighbor_sender) in &self.packet_send {
             info!(
-                "Node {}: Sending FloodRequest to {} with flood_id {}",
+                "Client {}: Sending FloodRequest to {} with flood_id {}",
                 self.id, neighbor_id, flood_id
             );
             if let Err(err) = neighbor_sender.send(packet.clone()) {
                 warn!(
-                    "Node {}: Unable to send FloodRequest to {}: {}",
+                    "Client {}: Unable to send FloodRequest to {}: {}",
                     self.id, neighbor_id, err
                 );
             }

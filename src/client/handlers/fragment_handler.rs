@@ -19,19 +19,19 @@ impl RustbustersClient {
             match self.reassemble_fragments(session_id) {
                 Ok(msg) => {
                     info!(
-                        "Node {}: Received full message {:?} of session {}",
+                        "Client {}: Received full message {:?} of session {}",
                         self.id, msg, session_id
                     );
                     self.stats.inc_messages_received();
                     if let Err(err) = self.controller_send.send(MessageReceived(msg)) {
                         warn!(
-                            "Node {}: Unable to send MessageReceived(...) to controller: {}",
+                            "Client {}: Unable to send MessageReceived(...) to controller: {}",
                             self.id, err
                         );
                     }
                 }
                 Err(err) => {
-                    warn!("Node {}: {}", self.id, err);
+                    warn!("Client {}: {}", self.id, err);
                 }
             }
         }
@@ -61,22 +61,22 @@ impl RustbustersClient {
         if let Some(sender) = self.packet_send.get(&next_hop) {
             if let Err(err) = sender.send(ack_packet.clone()) {
                 warn!(
-                    "Node {}: Error sending Ack for fragment {} to {}: {}",
+                    "Client {}: Error sending Ack for fragment {} to {}: {}",
                     self.id, fragment_index, next_hop, err
                 );
                 self.send_to_sc(ControllerShortcut(ack_packet));
-                info!("Node {}: Sending ack through SC", self.id);
+                info!("Client {}: Sending ack through SC", self.id);
             } else {
                 // Increment the number of sent Acks
                 self.stats.inc_acks_sent();
                 info!(
-                    "Node {}: Sent Ack for fragment {} to {}",
+                    "Client {}: Sent Ack for fragment {} to {}",
                     self.id, fragment_index, next_hop
                 );
             }
         } else {
             warn!(
-                "Node {}: Cannot send Ack for fragment {} to {}",
+                "Client {}: Cannot send Ack for fragment {} to {}",
                 self.id, fragment_index, next_hop
             );
             self.send_to_sc(ControllerShortcut(ack_packet))

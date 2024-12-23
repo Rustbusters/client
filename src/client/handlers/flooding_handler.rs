@@ -19,8 +19,8 @@ impl RustbustersClient {
             }
         }
 
-        info!("Node {}: Updated topology: {:?}", self.id, self.topology);
-        info!("Node {}: Known nodes: {:?}", self.id, self.known_nodes);
+        info!("Client {}: Updated topology: {:?}", self.id, self.topology);
+        info!("Client {}: Known nodes: {:?}", self.id, self.known_nodes);
     }
 
     pub(crate) fn handle_flood_request(&mut self, flood_request: &FloodRequest, session_id: u64) {
@@ -45,7 +45,7 @@ impl RustbustersClient {
         // If the packet was sent by this client, learn the topology without sending a response
         if flood_request.initiator_id == self.id {
             info!(
-                "Node {}: Received own FloodRequest with flood_id {}. Learning topology...",
+                "Client {}: Received own FloodRequest with flood_id {}. Learning topology...",
                 self.id, flood_request.flood_id
             );
             self.handle_flood_response(&flood_response);
@@ -68,19 +68,19 @@ impl RustbustersClient {
             .get(&response_packet.routing_header.hops[1])
         {
             info!(
-                "Node {}: Sending FloodResponse to initiator {}, next hop {}",
+                "Client {}: Sending FloodResponse to initiator {}, next hop {}",
                 self.id, flood_request.initiator_id, response_packet.routing_header.hops[1]
             );
             if let Err(err) = sender.send(response_packet.clone()) {
                 warn!(
-                    "Node {}: Error sending FloodResponse to initiator {}: {}",
+                    "Client {}: Error sending FloodResponse to initiator {}: {}",
                     self.id, flood_request.initiator_id, err
                 );
                 self.send_to_sc(ControllerShortcut(response_packet));
             }
         } else {
             warn!(
-                "Node {}: Cannot send FloodResponse to initiator {}",
+                "Client {}: Cannot send FloodResponse to initiator {}",
                 self.id, flood_request.initiator_id
             );
             self.send_to_sc(ControllerShortcut(response_packet));

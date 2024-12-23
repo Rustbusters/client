@@ -25,7 +25,7 @@ impl RustbustersClient {
             // Send the fragments along the route
             for fragment in fragments {
                 debug!(
-                    "Node {}: Sending fragment {:?} of session {} to {}",
+                    "Client {}: Sending fragment {:?} of session {} to {}",
                     self.id, fragment, session_id, destination_id
                 );
                 let fragment_index = fragment.fragment_index;
@@ -53,11 +53,11 @@ impl RustbustersClient {
             let _ = self.controller_send.send(HostEvent::MessageSent(message));
 
             info!(
-                "Node {}: Sent message to {} via route {:?}",
+                "Client {}: Sent message to {} via route {:?}",
                 self.id, destination_id, route
             );
         } else {
-            info!("Node {}: No route to {}", self.id, destination_id);
+            info!("Client {}: No route to {}", self.id, destination_id);
         }
     }
 }

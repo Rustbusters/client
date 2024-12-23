@@ -17,7 +17,7 @@ impl RustbustersClient {
                     .send(HostEvent::StatsResponse(self.stats.clone()))
                 {
                     warn!(
-                        "Node {}: Unable to send StatsResponse(...) to controller: {}",
+                        "Client {}: Unable to send StatsResponse(...) to controller: {}",
                         self.id, err
                     );
                 }

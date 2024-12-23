@@ -74,7 +74,7 @@ impl RustbustersClient {
                 if let Ok(packet) = packet_res {
                     self.handle_packet(packet);
                 } else {
-                    error!("Node {} - Error in receiving packet", self.id);
+                    error!("Client {} - Error in receiving packet", self.id);
                 }
             },
             // Handle SC commands
@@ -82,7 +82,7 @@ impl RustbustersClient {
                 if let Ok(cmd) = command {
                     self.handle_command(cmd);
                 } else {
-                    error!("Node {} - Error in receiving command", self.id);
+                    error!("Client {} - Error in receiving command", self.id);
                 }
             },
             default(Duration::from_millis(100)) => {
@@ -93,9 +93,9 @@ impl RustbustersClient {
 
     pub(crate) fn send_to_sc(&mut self, event: HostEvent) {
         if self.controller_send.send(event).is_ok() {
-            info!("Node {} - Sent NodeEvent to SC", self.id);
+            info!("Client {} - Sent NodeEvent to SC", self.id);
         } else {
-            error!("Node {} - Error in sending event to SC", self.id);
+            error!("Client {} - Error in sending event to SC", self.id);
         }
     }
 }
