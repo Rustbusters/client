@@ -1,8 +1,12 @@
-use crate::ui::CLIENTS;
+use crate::ui::{CLIENTS, KNOWN_NODES};
 use std::fs;
 use std::io::Error;
 use std::str::FromStr;
 use tiny_http::{Header, Method, Request, Response};
+use wg_2024::network::NodeId;
+use wg_2024::packet::NodeType;
+
+const STATIC_PATH: &str = "static/client/frontend/dist";
 
 pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
     let method = req.method();
@@ -11,7 +15,7 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
     let response = match (method, url) {
         // Servire il file index.html sulla root
         (Method::Get, "/") => {
-            let file = fs::read_to_string("static/client/tonini/index.html")
+            let file = fs::read_to_string(format!("{STATIC_PATH}/index.html"))
                 .unwrap_or("DEFAULT_HTML".to_string());
             Response::from_string(file)
                 .with_header(Header::from_str("Content-Type: text/html").unwrap())
@@ -20,11 +24,37 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
             let threads = CLIENTS.lock().unwrap();
             // respond with the list of active threads
             Response::from_string(format!("{threads:?}"))
+                .with_header(Header::from_str("Content-Type: application/json").unwrap())
+        }
+        (Method::Get, "/api/servers") => {
+            let known_nodes = KNOWN_NODES.lock().unwrap();
+
+            let known_nodes = match &*known_nodes {
+                None => vec![],
+                Some(node_arc) => {
+                    let node_map = node_arc.lock().unwrap();
+                    let servers: Vec<NodeId> = node_map
+                        .iter()
+                        .filter_map(|(id, node_type)| {
+                            if *node_type == NodeType::Server {
+                                Some(*id)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    servers
+                }
+            };
+
+            // respond with the list of known nodes
+            Response::from_string(format!("{known_nodes:?}"))
+                .with_header(Header::from_str("Content-Type: application/json").unwrap())
         }
         // Servire contenuti statici
         (Method::Get, path) if path.starts_with('/') => {
             let sanitized_path = &path[1..]; // Rimuove lo slash iniziale
-            match fs::read(format!("static/client/tonini/{sanitized_path}")) {
+            match fs::read(format!("{STATIC_PATH}/{sanitized_path}")) {
                 Ok(content) => {
                     println!("Serving static file: {sanitized_path}");
                     Response::from_data(content).with_header(
@@ -55,6 +85,7 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
 
             Response::from_string("POST request received")
         }
+        (Method::Post, "/api/register") => Response::from_string("POST request received"),
         // API PUT
         (Method::Put, "/api") => {
             println!("PUT request received");

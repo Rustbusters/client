@@ -10,8 +10,12 @@ impl RustbustersClient {
     pub(crate) fn handle_flood_response(&mut self, flood_response: &FloodResponse) {
         for window in flood_response.path_trace.windows(2) {
             if let [(from_id, from_type), (to_id, to_type)] = window {
-                self.known_nodes.insert(*from_id, *from_type);
-                self.known_nodes.insert(*to_id, *to_type);
+                // Update known nodes
+                self.known_nodes
+                    .lock()
+                    .unwrap()
+                    .insert(*from_id, *from_type);
+                self.known_nodes.lock().unwrap().insert(*to_id, *to_type);
 
                 // Update topology
                 self.topology.add_edge(*from_id, *to_id, 1.0);
@@ -19,7 +23,11 @@ impl RustbustersClient {
         }
 
         info!("Client {}: Updated topology: {:?}", self.id, self.topology);
-        info!("Client {}: Known nodes: {:?}", self.id, self.known_nodes);
+        info!(
+            "Client {}: Known nodes: {:?}",
+            self.id,
+            self.known_nodes.lock().unwrap()
+        );
     }
 
     pub(crate) fn handle_flood_request(&mut self, flood_request: &FloodRequest, session_id: u64) {

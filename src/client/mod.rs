@@ -6,11 +6,12 @@ mod packet_sender;
 mod routing;
 
 use common_utils::{HostCommand, HostEvent, Stats};
-use crossbeam_channel::{select, Receiver, Sender};
+use crossbeam_channel::{select_biased, Receiver, Sender};
 use log::{error, info};
 use petgraph::prelude::GraphMap;
 use petgraph::Undirected;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{Fragment, NodeType, Packet};
@@ -21,7 +22,7 @@ pub struct RustbustersClient {
     controller_recv: Receiver<HostCommand>,
     packet_recv: Receiver<Packet>,
     packet_send: HashMap<NodeId, Sender<Packet>>,
-    known_nodes: HashMap<NodeId, NodeType>,
+    pub(crate) known_nodes: Arc<Mutex<HashMap<NodeId, NodeType>>>,
     topology: GraphMap<NodeId, f32, Undirected>,
     flood_id_counter: u64,
     session_id_counter: u64,
@@ -47,7 +48,7 @@ impl RustbustersClient {
             controller_recv,
             packet_recv,
             packet_send,
-            known_nodes: HashMap::new(),
+            known_nodes: Arc::new(Mutex::new(HashMap::new())),
             topology: GraphMap::new(),
             flood_id_counter: 73,    // arbitrary value
             session_id_counter: 173, // arbitrary value
@@ -64,26 +65,26 @@ impl RustbustersClient {
         info!("Client {} started network discovery", self.id);
         self.discover_network();
 
-        // Handle incoming packets
-        select! {
-            // Handle incoming packets
-            recv(self.packet_recv) -> packet_res => {
-                if let Ok(packet) = packet_res {
-                    self.handle_packet(packet);
-                } else {
-                    error!("Client {} - Error in receiving packet", self.id);
+        loop {
+            select_biased! {
+                // Handle SC commands
+                recv(self.controller_recv) -> command => {
+                    if let Ok(cmd) = command {
+                        self.handle_command(cmd);
+                    } else {
+                        error!("Client {} - Error in receiving command", self.id);
+                    }
+                },
+                // Handle incoming packets
+                recv(self.packet_recv) -> packet_res => {
+                    if let Ok(packet) = packet_res {
+                        self.handle_packet(packet);
+                    } else {
+                        error!("Client {} - Error in receiving packet", self.id);
+                    }
+                },
+                default(Duration::from_millis(100)) => {
                 }
-            },
-            // Handle SC commands
-            recv(self.controller_recv) -> command => {
-                if let Ok(cmd) = command {
-                    self.handle_command(cmd);
-                } else {
-                    error!("Client {} - Error in receiving command", self.id);
-                }
-            },
-            default(Duration::from_millis(100)) => {
-              // No more packets
             }
         }
     }

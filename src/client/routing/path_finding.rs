@@ -83,7 +83,7 @@ impl RustbustersClient {
         None
     }
 
-    fn get_node_type(&self, node_id: NodeId) -> Option<&NodeType> {
-        self.known_nodes.get(&node_id)
+    fn get_node_type(&self, node_id: NodeId) -> Option<NodeType> {
+        self.known_nodes.lock().unwrap().get(&node_id).copied()
     }
 }
