@@ -1,6 +1,7 @@
-use crate::ui::{CLIENTS, KNOWN_NODES};
+use crate::ui::CLIENTS_STATE;
+use std::collections::HashMap;
 use std::fs;
-use std::io::Error;
+use std::io::{Cursor, Error};
 use std::str::FromStr;
 use tiny_http::{Header, Method, Request, Response};
 use wg_2024::network::NodeId;
@@ -10,9 +11,24 @@ const STATIC_PATH: &str = "static/client/frontend/dist";
 
 pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
     let method = req.method();
-    let url = req.url();
-    println!("Received request: {method} {url}");
-    let response = match (method, url) {
+    let full_url = req.url(); // Include sia il path che i query parameters
+    let path = full_url.split('?').next().unwrap_or("/"); // Ottieni solo il path
+
+    // Parsing della query string (se esiste)
+    let query_params: Option<HashMap<String, String>> = full_url.find('?').map(|pos| {
+        full_url[pos + 1..]
+            .split('&')
+            .filter_map(|pair| {
+                let mut parts = pair.splitn(2, '=');
+                let key = parts.next()?.to_string();
+                let value = parts.next()?.to_string();
+                Some((key, value))
+            })
+            .collect()
+    });
+
+    println!("Received request: {method} {full_url}");
+    let response = match (method, path) {
         // Servire il file index.html sulla root
         (Method::Get, "/") => {
             let file = fs::read_to_string(format!("{STATIC_PATH}/index.html"))
@@ -20,37 +36,15 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
             Response::from_string(file)
                 .with_header(Header::from_str("Content-Type: text/html").unwrap())
         }
-        (Method::Get, "/api/threads") => {
-            let threads = CLIENTS.lock().unwrap();
+        (Method::Get, "/api/clients") => {
+            let clients = CLIENTS_STATE.lock().unwrap();
             // respond with the list of active threads
-            Response::from_string(format!("{threads:?}"))
+            let clients_list: Vec<NodeId> = clients.keys().copied().collect();
+
+            Response::from_string(format!("{clients_list:?}"))
                 .with_header(Header::from_str("Content-Type: application/json").unwrap())
         }
-        (Method::Get, "/api/servers") => {
-            let known_nodes = KNOWN_NODES.lock().unwrap();
-
-            let known_nodes = match &*known_nodes {
-                None => vec![],
-                Some(node_arc) => {
-                    let node_map = node_arc.lock().unwrap();
-                    let servers: Vec<NodeId> = node_map
-                        .iter()
-                        .filter_map(|(id, node_type)| {
-                            if *node_type == NodeType::Server {
-                                Some(*id)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-                    servers
-                }
-            };
-
-            // respond with the list of known nodes
-            Response::from_string(format!("{known_nodes:?}"))
-                .with_header(Header::from_str("Content-Type: application/json").unwrap())
-        }
+        (Method::Get, "/api/servers") => get_servers(&query_params),
         // Servire contenuti statici
         (Method::Get, path) if path.starts_with('/') => {
             let sanitized_path = &path[1..]; // Rimuove lo slash iniziale
@@ -136,4 +130,42 @@ fn get_mime_type(path: &str) -> &'static str {
     } else {
         "application/octet-stream"
     }
+}
+
+fn get_servers(query_params: &Option<HashMap<String, String>>) -> Response<Cursor<Vec<u8>>> {
+    // Ottieni il parametro `id` dalla query string
+    let id = query_params
+        .as_ref()
+        .and_then(|params| params.get("id"))
+        .and_then(|id_str| id_str.parse::<NodeId>().ok())
+        .unwrap_or(0);
+
+    if id == 0 {
+        return Response::from_string("Invalid or missing 'id' query parameter")
+            .with_status_code(400);
+    }
+    let clients_state = CLIENTS_STATE.lock().unwrap();
+    let known_nodes = clients_state
+        .get(&id)
+        .and_then(|client| client.known_nodes.clone());
+
+    let known_nodes = match known_nodes {
+        None => vec![],
+        Some(node_arc) => {
+            let node_map = node_arc.lock().unwrap();
+            node_map
+                .iter()
+                .filter_map(|(node_id, node_type)| {
+                    if *node_type == NodeType::Server {
+                        Some(*node_id)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<NodeId>>()
+        }
+    };
+
+    Response::from_string(format!("{known_nodes:?}"))
+        .with_header(Header::from_str("Content-Type: application/json").unwrap())
 }

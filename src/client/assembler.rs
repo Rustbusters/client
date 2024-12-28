@@ -1,8 +1,11 @@
 use crate::client::RustbustersClient;
-use common_utils::Message;
+use common_utils::server_to_client::MessageToClient;
 
 impl RustbustersClient {
-    pub(crate) fn reassemble_fragments(&mut self, session_id: u64) -> Result<Message, String> {
+    pub(crate) fn reassemble_fragments(
+        &mut self,
+        session_id: u64,
+    ) -> Result<MessageToClient, String> {
         match self.pending_received.remove(&session_id) {
             None => Err(format!("No fragments for session {}", session_id)),
             Some(fragments) => {

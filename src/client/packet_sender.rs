@@ -1,26 +1,19 @@
 use crate::client::RustbustersClient;
-use common_utils::{HostEvent, Message};
+use common_utils::client_to_server::MessageToServer;
+use common_utils::HostEvent;
 use log::{debug, info};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Packet, PacketType};
 
 impl RustbustersClient {
-    pub(crate) fn send_random_message(&mut self, destination_id: NodeId) {
+    pub(crate) fn send_message(&mut self, destination_id: NodeId, message: MessageToServer) {
         // Compute the route to the destination
         if let Some(route) = self.find_weighted_path(destination_id) {
             // Increment session_id_counter
             self.session_id_counter += 1;
             let session_id = self.session_id_counter;
 
-            // // Serialize and fragment the message
-            let message = Message::Text(
-                format!("Hello from {} with session {}. This is a random message. Bla Bla Bla Things\
-                 to make the message longer for testing purposes and see if and how fragmentation \
-                 works. I hope it works. QuackableQuackableQuackableQuackableQuackableQuackableQuackable\
-                 QuackableQuackableQuackableQuackableQuackable", self.id, session_id
-                )
-            );
-            let fragments = self.disassemble_message(message.clone());
+            let fragments = self.disassemble_message(&message);
 
             // Send the fragments along the route
             for fragment in fragments {

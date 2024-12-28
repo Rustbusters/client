@@ -11,26 +11,27 @@ use wg_2024::packet::NodeType;
 
 const HTTP_PORT: u16 = 7373;
 
+type KnownNodes = Option<Arc<Mutex<HashMap<NodeId, NodeType>>>>;
+pub(crate) struct ClientState {
+    known_nodes: KnownNodes,
+}
+
 lazy_static! {
     pub(crate) static ref THREADS: Mutex<Vec<thread::JoinHandle<()>>> = Mutex::new(Vec::new());
 }
 
 lazy_static! {
-    pub(crate) static ref CLIENTS: Mutex<Vec<NodeId>> = Mutex::new(Vec::new());
-}
-
-lazy_static! {
-    pub(crate) static ref KNOWN_NODES: Mutex<Option<Arc<Mutex<HashMap<NodeId, NodeType>>>>> =
-        Mutex::new(None);
+    pub(crate) static ref CLIENTS_STATE: Mutex<HashMap<NodeId, ClientState>> =
+        Mutex::new(HashMap::new());
 }
 
 impl RustbustersClient {
     pub(crate) fn run_ui(&self) {
         // log the content of Clients
-        let mut clients = CLIENTS.lock().unwrap();
+        let mut clients_state = CLIENTS_STATE.lock().unwrap();
 
         // if it is empty, run the http server
-        if clients.is_empty() {
+        if clients_state.is_empty() {
             let http_handle = thread::spawn(run_http_server);
             let client_id = self.id;
             let websocket_handle =
@@ -41,12 +42,12 @@ impl RustbustersClient {
         }
 
         // add the client to the list
-        clients.push(self.id);
-
-        // Share the topology
-        let mut known_nodes = KNOWN_NODES.lock().unwrap();
-        *known_nodes = Some(self.known_nodes.clone());
-        println!("Known nodes: {known_nodes:?}",);
+        clients_state.insert(
+            self.id,
+            ClientState {
+                known_nodes: Some(self.known_nodes.clone()),
+            },
+        );
     }
 }
 

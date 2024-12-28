@@ -5,6 +5,8 @@ mod handlers;
 mod packet_sender;
 mod routing;
 
+use common_utils::client_to_server::MessageToServer;
+use common_utils::server_to_client::MessageToClient;
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select_biased, Receiver, Sender};
 use log::{error, info};
@@ -18,7 +20,7 @@ use wg_2024::packet::{Fragment, NodeType, Packet};
 
 pub struct RustbustersClient {
     pub(crate) id: NodeId,
-    controller_send: Sender<HostEvent>,
+    controller_send: Sender<HostEvent<MessageToServer, MessageToClient>>,
     controller_recv: Receiver<HostCommand>,
     packet_recv: Receiver<Packet>,
     packet_send: HashMap<NodeId, Sender<Packet>>,
@@ -36,7 +38,7 @@ pub struct RustbustersClient {
 impl RustbustersClient {
     pub fn new(
         id: NodeId,
-        controller_send: Sender<HostEvent>,
+        controller_send: Sender<HostEvent<MessageToServer, MessageToClient>>,
         controller_recv: Receiver<HostCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
@@ -89,7 +91,7 @@ impl RustbustersClient {
         }
     }
 
-    pub(crate) fn send_to_sc(&mut self, event: HostEvent) {
+    pub(crate) fn send_to_sc(&mut self, event: HostEvent<MessageToServer, MessageToClient>) {
         if self.controller_send.send(event).is_ok() {
             info!("Client {} - Sent NodeEvent to SC", self.id);
         } else {

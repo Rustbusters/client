@@ -1,4 +1,4 @@
-use crate::ui::{CLIENTS, HTTP_PORT, THREADS};
+use crate::ui::{CLIENTS_STATE, HTTP_PORT, THREADS};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::thread::sleep;
@@ -37,7 +37,7 @@ pub(crate) fn run_websocket_server(id: NodeId) {
             }
         }
 
-        let clients = CLIENTS.lock().unwrap();
+        let clients = CLIENTS_STATE.lock().unwrap();
         if clients.is_empty() {
             break;
         }
