@@ -1,12 +1,11 @@
 use crate::client::RustbustersClient;
-use common_utils::client_to_server::MessageToServer;
-use common_utils::HostEvent;
+use common_utils::{HostEvent, HostMessage};
 use log::{debug, info};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Packet, PacketType};
 
 impl RustbustersClient {
-    pub(crate) fn send_message(&mut self, destination_id: NodeId, message: MessageToServer) {
+    pub(crate) fn send_message(&mut self, destination_id: NodeId, message: HostMessage) {
         // Compute the route to the destination
         if let Some(route) = self.find_weighted_path(destination_id) {
             // Increment session_id_counter
@@ -43,7 +42,9 @@ impl RustbustersClient {
                 }
             }
             self.stats.inc_messages_sent();
-            let _ = self.controller_send.send(HostEvent::MessageSent(message));
+            let _ = self
+                .controller_send
+                .send(HostEvent::HostMessageSent(message));
 
             info!(
                 "Client {}: Sent message to {} via route {:?}",

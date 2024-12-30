@@ -5,8 +5,6 @@ mod handlers;
 mod packet_sender;
 mod routing;
 
-use common_utils::client_to_server::MessageToServer;
-use common_utils::server_to_client::MessageToClient;
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select_biased, Receiver, Sender};
 use log::{error, info};
@@ -20,7 +18,7 @@ use wg_2024::packet::{Fragment, NodeType, Packet};
 
 pub struct RustbustersClient {
     pub(crate) id: NodeId,
-    controller_send: Sender<HostEvent<MessageToServer, MessageToClient>>,
+    controller_send: Sender<HostEvent>,
     controller_recv: Receiver<HostCommand>,
     packet_recv: Receiver<Packet>,
     packet_send: HashMap<NodeId, Sender<Packet>>,
@@ -38,7 +36,7 @@ pub struct RustbustersClient {
 impl RustbustersClient {
     pub fn new(
         id: NodeId,
-        controller_send: Sender<HostEvent<MessageToServer, MessageToClient>>,
+        controller_send: Sender<HostEvent>,
         controller_recv: Receiver<HostCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
@@ -61,7 +59,11 @@ impl RustbustersClient {
     }
 
     pub fn run(&mut self) {
-        self.run_ui();
+        // Generate UI crossbeam channels
+        let (ui_to_ws_sender, ui_to_ws_receiver) = crossbeam_channel::unbounded();
+        let (ws_to_ui_sender, ws_to_ui_receiver) = crossbeam_channel::unbounded();
+
+        self.run_ui(ui_to_ws_sender, ws_to_ui_receiver);
 
         // Start network discovery
         info!("Client {} started network discovery", self.id);
@@ -69,6 +71,20 @@ impl RustbustersClient {
 
         loop {
             select_biased! {
+                // Handle UI commands
+                recv(ui_to_ws_receiver) -> msg_to_srv => {
+                    if let Ok(msg) = msg_to_srv {
+                        let sender_id = msg.0;
+                        let receiver_id = msg.1;
+                        let message = msg.2;
+
+                        //pretty print
+                        println!("Client {} - Sending message from {} to {} with content: {:?}", self.id, sender_id, receiver_id, message);
+                        // unimplemented!("Handle UI message");
+                    } else {
+                        error!("Client {} - Error in receiving command", self.id);
+                    }
+                },
                 // Handle SC commands
                 recv(self.controller_recv) -> command => {
                     if let Ok(cmd) = command {
@@ -80,7 +96,7 @@ impl RustbustersClient {
                 // Handle incoming packets
                 recv(self.packet_recv) -> packet_res => {
                     if let Ok(packet) = packet_res {
-                        self.handle_packet(packet);
+                        self.handle_packet(packet, &ws_to_ui_sender);
                     } else {
                         error!("Client {} - Error in receiving packet", self.id);
                     }
@@ -91,7 +107,7 @@ impl RustbustersClient {
         }
     }
 
-    pub(crate) fn send_to_sc(&mut self, event: HostEvent<MessageToServer, MessageToClient>) {
+    pub(crate) fn send_to_sc(&mut self, event: HostEvent) {
         if self.controller_send.send(event).is_ok() {
             info!("Client {} - Sent NodeEvent to SC", self.id);
         } else {

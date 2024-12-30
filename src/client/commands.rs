@@ -1,6 +1,5 @@
 use crate::client::RustbustersClient;
-use common_utils::client_to_server::MessageToServer;
-use common_utils::{HostCommand, HostEvent};
+use common_utils::{ClientToServerMessage, HostCommand, HostEvent, HostMessage};
 use log::warn;
 
 impl RustbustersClient {
@@ -9,9 +8,9 @@ impl RustbustersClient {
             HostCommand::SendRandomMessage(dest) => {
                 self.send_message(
                     dest,
-                    MessageToServer::Register {
+                    HostMessage::FromClient(ClientToServerMessage::RegisterUser {
                         name: "Random".to_string(),
-                    },
+                    }),
                 );
             }
             HostCommand::DiscoverNetwork => {

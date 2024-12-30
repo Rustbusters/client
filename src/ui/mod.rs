@@ -1,6 +1,11 @@
+mod api;
 mod request_handler;
+mod utils;
 mod websocket;
+
 use crate::RustbustersClient;
+use common_utils::{ClientToServerMessage, ServerToClientMessage};
+use crossbeam_channel::{Receiver, Sender};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -14,6 +19,8 @@ const HTTP_PORT: u16 = 7373;
 type KnownNodes = Option<Arc<Mutex<HashMap<NodeId, NodeType>>>>;
 pub(crate) struct ClientState {
     known_nodes: KnownNodes,
+    sender: Option<Sender<(NodeId, NodeId, ClientToServerMessage)>>,
+    receiver: Option<Receiver<(NodeId, NodeId, ServerToClientMessage)>>,
 }
 
 lazy_static! {
@@ -26,16 +33,18 @@ lazy_static! {
 }
 
 impl RustbustersClient {
-    pub(crate) fn run_ui(&self) {
+    pub(crate) fn run_ui(
+        &self,
+        sender: Sender<(NodeId, NodeId, ClientToServerMessage)>,
+        receiver: Receiver<(NodeId, NodeId, ServerToClientMessage)>,
+    ) {
         // log the content of Clients
         let mut clients_state = CLIENTS_STATE.lock().unwrap();
 
         // if it is empty, run the http server
         if clients_state.is_empty() {
             let http_handle = thread::spawn(run_http_server);
-            let client_id = self.id;
-            let websocket_handle =
-                thread::spawn(move || websocket::run_websocket_server(client_id));
+            let websocket_handle = thread::spawn(websocket::run_websocket_server);
 
             THREADS.lock().unwrap().push(http_handle);
             THREADS.lock().unwrap().push(websocket_handle);
@@ -46,6 +55,8 @@ impl RustbustersClient {
             self.id,
             ClientState {
                 known_nodes: Some(self.known_nodes.clone()),
+                sender: Some(sender),
+                receiver: Some(receiver),
             },
         );
     }

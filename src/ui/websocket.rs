@@ -3,12 +3,11 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use tungstenite::WebSocket;
-use wg_2024::network::NodeId;
+use tungstenite::{Message, WebSocket};
 
 const WEBSOCKET_PORT: u16 = HTTP_PORT + 1;
 
-pub(crate) fn run_websocket_server(id: NodeId) {
+pub(crate) fn run_websocket_server() {
     let listener = TcpListener::bind(format!("0.0.0.0:{WEBSOCKET_PORT}")).unwrap();
     listener.set_nonblocking(true).ok();
     loop {
@@ -16,14 +15,7 @@ pub(crate) fn run_websocket_server(id: NodeId) {
             Ok((tcp_stream, _)) => {
                 println!("New WebSocket connection");
                 let web_socket_updates = thread::spawn(move || {
-                    if let Ok(mut web_socket_stream) = tungstenite::accept(tcp_stream) {
-                        web_socket_stream
-                            .write(tungstenite::Message::Text(
-                                format!("{{\"type\": \"new_thread\", \"thread_id\": {id}}}").into(),
-                            ))
-                            .unwrap();
-
-                        web_socket_stream.flush().ok();
+                    if let Ok(web_socket_stream) = tungstenite::accept(tcp_stream) {
                         handle_new_connection(web_socket_stream);
                     }
                 });
@@ -57,6 +49,21 @@ fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {
             Err(_err) => {
                 // println!("Error reading message: {err}");
                 sleep(Duration::from_millis(10));
+            }
+        }
+
+        let clients = CLIENTS_STATE.lock().unwrap();
+        for (_client_id, client_state) in clients.iter() {
+            if let Some(receiver) = &client_state.receiver {
+                if let Ok(msg) = receiver.try_recv() {
+                    ws_stream
+                        .write(Message::Text(
+                            serde_json::to_string(&msg)
+                                .expect("Should be serializable")
+                                .into(),
+                        ))
+                        .ok();
+                }
             }
         }
     }

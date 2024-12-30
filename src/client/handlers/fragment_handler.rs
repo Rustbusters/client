@@ -1,5 +1,8 @@
 use crate::client::RustbustersClient;
-use common_utils::HostEvent::{ControllerShortcut, MessageReceived};
+use common_utils::HostEvent::{ControllerShortcut, HostMessageReceived};
+use common_utils::HostMessage::FromServer;
+use common_utils::ServerToClientMessage;
+use crossbeam_channel::Sender;
 use log::{info, warn};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Ack, Fragment, Packet, PacketType};
@@ -7,12 +10,15 @@ use wg_2024::packet::{Ack, Fragment, Packet, PacketType};
 impl RustbustersClient {
     pub(crate) fn handle_message_fragment(
         &mut self,
-        fragment: Fragment,
+        fragment: &Fragment,
         session_id: u64,
-        source_routing_header: SourceRoutingHeader,
+        source_routing_header: &SourceRoutingHeader,
+        sender: &Sender<(NodeId, NodeId, ServerToClientMessage)>,
     ) {
         // Update stats
         self.stats.inc_fragments_received();
+
+        let source = *source_routing_header.hops.first().unwrap();
 
         // If after insert all fragments of the session are received, reassemble the message
         if self.set_pending(session_id, fragment.clone()) {
@@ -23,7 +29,19 @@ impl RustbustersClient {
                         self.id, msg, session_id
                     );
                     self.stats.inc_messages_received();
-                    if let Err(err) = self.controller_send.send(MessageReceived(msg)) {
+
+                    if let FromServer(s2c_msg) = &msg {
+                        if sender.send((source, self.id, s2c_msg.clone())).is_err() {
+                            warn!("Client {}: Unable to send message to UI", self.id);
+                        }
+                    } else {
+                        warn!(
+                            "Client {}: Received message that is from another client",
+                            self.id
+                        );
+                    }
+
+                    if let Err(err) = self.controller_send.send(HostMessageReceived(msg)) {
                         warn!(
                             "Client {}: Unable to send MessageReceived(...) to controller: {}",
                             self.id, err

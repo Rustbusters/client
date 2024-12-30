@@ -1,9 +1,9 @@
 use crate::client::RustbustersClient;
-use common_utils::client_to_server::MessageToServer;
+use common_utils::HostMessage;
 use wg_2024::packet::{Fragment, FRAGMENT_DSIZE};
 
 impl RustbustersClient {
-    pub(crate) fn disassemble_message(&self, message: &MessageToServer) -> Vec<Fragment> {
+    pub(crate) fn disassemble_message(&self, message: &HostMessage) -> Vec<Fragment> {
         let serialized_str = serde_json::to_string(&message).unwrap();
         let bytes = serialized_str.as_bytes();
 

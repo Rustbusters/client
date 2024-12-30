@@ -1,9 +1,16 @@
 use crate::client::RustbustersClient;
+use common_utils::ServerToClientMessage;
+use crossbeam_channel::Sender;
 use log::info;
+use wg_2024::network::NodeId;
 use wg_2024::packet::{Packet, PacketType};
 
 impl RustbustersClient {
-    pub(crate) fn handle_packet(&mut self, packet: Packet) {
+    pub(crate) fn handle_packet(
+        &mut self,
+        packet: Packet,
+        ui_sender: &Sender<(NodeId, NodeId, ServerToClientMessage)>,
+    ) {
         match packet.pack_type {
             PacketType::FloodRequest(flood_request) => {
                 info!(
@@ -25,7 +32,12 @@ impl RustbustersClient {
                     "Client {}: Received fragment {} of session {}",
                     self.id, fragment.fragment_index, packet.session_id
                 );
-                self.handle_message_fragment(fragment, packet.session_id, packet.routing_header);
+                self.handle_message_fragment(
+                    &fragment,
+                    packet.session_id,
+                    &packet.routing_header,
+                    ui_sender,
+                );
             }
             PacketType::Ack(ack) => {
                 // Handle Acknowledgments
