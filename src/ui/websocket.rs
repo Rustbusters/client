@@ -1,8 +1,6 @@
 use crate::ui::{CLIENTS_STATE, HTTP_PORT, THREADS};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
 use tungstenite::{Message, WebSocket};
 
 const WEBSOCKET_PORT: u16 = HTTP_PORT + 1;
@@ -42,27 +40,20 @@ fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {
     println!("New WebSocket connection");
 
     loop {
-        match ws_stream.read() {
-            Ok(msg) => {
-                println!("Received message: {msg:?}");
-            }
-            Err(_err) => {
-                // println!("Error reading message: {err}");
-                sleep(Duration::from_millis(10));
-            }
+        if let Ok(msg) = ws_stream.read() {
+            println!("Received message: {msg:?}");
         }
 
-        let clients = CLIENTS_STATE.lock().unwrap();
-        for (_client_id, client_state) in clients.iter() {
+        let clients = CLIENTS_STATE.lock().unwrap().clone();
+        for (client_id, client_state) in &clients {
             if let Some(receiver) = &client_state.receiver {
                 if let Ok(msg) = receiver.try_recv() {
-                    ws_stream
-                        .write(Message::Text(
-                            serde_json::to_string(&msg)
-                                .expect("Should be serializable")
-                                .into(),
-                        ))
-                        .ok();
+                    let ws_message = format!(
+                        "{{\"client_id\":{client_id},\"server_id\": {},\"message\":{}}}",
+                        msg.0,
+                        serde_json::to_string(&msg.1).expect("Should be serializable")
+                    );
+                    ws_stream.write(Message::Text(ws_message.into())).ok();
                 }
             }
         }

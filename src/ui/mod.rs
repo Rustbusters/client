@@ -17,10 +17,14 @@ use wg_2024::packet::NodeType;
 const HTTP_PORT: u16 = 7373;
 
 type KnownNodes = Option<Arc<Mutex<HashMap<NodeId, NodeType>>>>;
+
+#[derive(Clone, Debug)]
 pub(crate) struct ClientState {
     known_nodes: KnownNodes,
-    sender: Option<Sender<(NodeId, NodeId, ClientToServerMessage)>>,
-    receiver: Option<Receiver<(NodeId, NodeId, ServerToClientMessage)>>,
+    // NodeId is the destination server
+    sender: Option<Sender<(NodeId, ClientToServerMessage)>>,
+    // NodeId is the id of the destination client
+    receiver: Option<Receiver<(NodeId, ServerToClientMessage)>>,
 }
 
 lazy_static! {
@@ -35,8 +39,8 @@ lazy_static! {
 impl RustbustersClient {
     pub(crate) fn run_ui(
         &self,
-        sender: Sender<(NodeId, NodeId, ClientToServerMessage)>,
-        receiver: Receiver<(NodeId, NodeId, ServerToClientMessage)>,
+        sender: Sender<(NodeId, ClientToServerMessage)>,
+        receiver: Receiver<(NodeId, ServerToClientMessage)>,
     ) {
         // log the content of Clients
         let mut clients_state = CLIENTS_STATE.lock().unwrap();
@@ -46,8 +50,9 @@ impl RustbustersClient {
             let http_handle = thread::spawn(run_http_server);
             let websocket_handle = thread::spawn(websocket::run_websocket_server);
 
-            THREADS.lock().unwrap().push(http_handle);
-            THREADS.lock().unwrap().push(websocket_handle);
+            let mut threads = THREADS.lock().unwrap();
+            threads.push(http_handle);
+            threads.push(websocket_handle);
         }
 
         // add the client to the list

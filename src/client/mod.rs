@@ -4,6 +4,7 @@ mod disassembler;
 mod handlers;
 mod packet_sender;
 mod routing;
+mod ui_connector;
 
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select_biased, Receiver, Sender};
@@ -74,13 +75,13 @@ impl RustbustersClient {
                 // Handle UI commands
                 recv(ui_to_ws_receiver) -> msg_to_srv => {
                     if let Ok(msg) = msg_to_srv {
-                        let sender_id = msg.0;
-                        let receiver_id = msg.1;
-                        let message = msg.2;
+                        let server_id = msg.0;
+                        let message = msg.1;
 
                         //pretty print
-                        println!("Client {} - Sending message from {} to {} with content: {:?}", self.id, sender_id, receiver_id, message);
-                        // unimplemented!("Handle UI message");
+                        println!("Client {} - Sending message to {} with content: {:?}", self.id, server_id, message);
+
+                        self.handle_ui_message(server_id, message);
                     } else {
                         error!("Client {} - Error in receiving command", self.id);
                     }

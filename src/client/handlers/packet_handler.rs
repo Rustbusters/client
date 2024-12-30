@@ -9,7 +9,7 @@ impl RustbustersClient {
     pub(crate) fn handle_packet(
         &mut self,
         packet: Packet,
-        ui_sender: &Sender<(NodeId, NodeId, ServerToClientMessage)>,
+        ui_sender: &Sender<(NodeId, ServerToClientMessage)>,
     ) {
         match packet.pack_type {
             PacketType::FloodRequest(flood_request) => {

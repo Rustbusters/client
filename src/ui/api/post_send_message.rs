@@ -27,11 +27,17 @@ pub(crate) fn post_send_message(req: &mut Request) -> Response<Cursor<Vec<u8>>> 
     // extract sender_id, receiver_id, timestamp (it's a string), content (string or Vec<u8>)
     let sender_id = get_number_from_json(&json_body, "sender_id");
     let receiver_id = get_number_from_json(&json_body, "receiver_id");
+    let server_id = get_number_from_json(&json_body, "server_id");
     let timestamp = get_string_from_json(&json_body, "timestamp");
     let content = get_content_from_json(&json_body);
 
     // check validity of fields
-    if sender_id.is_none() || receiver_id.is_none() || timestamp.is_none() || content.is_none() {
+    if sender_id.is_none()
+        || receiver_id.is_none()
+        || server_id.is_none()
+        || timestamp.is_none()
+        || content.is_none()
+    {
         Response::from_string("Invalid request body").with_status_code(400)
     } else {
         // get the sender of the client node
@@ -47,7 +53,7 @@ pub(crate) fn post_send_message(req: &mut Request) -> Response<Cursor<Vec<u8>>> 
                 recipient_id: receiver_id.unwrap(),
                 message: MessageBody {
                     sender_id: sender_id.unwrap(),
-                    message: match content.unwrap() {
+                    content: match content.unwrap() {
                         Content::String(text) => MessageContent::Text(text),
                         Content::Bytes(vec) => MessageContent::Image(vec),
                     },
@@ -56,9 +62,7 @@ pub(crate) fn post_send_message(req: &mut Request) -> Response<Cursor<Vec<u8>>> 
             };
 
             // send the message to the client node
-            sender
-                .send((sender_id.unwrap(), receiver_id.unwrap(), message))
-                .ok();
+            sender.send((server_id.unwrap(), message)).ok();
         }
 
         Response::from_string("POST request received")

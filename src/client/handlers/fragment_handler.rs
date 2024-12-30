@@ -13,7 +13,7 @@ impl RustbustersClient {
         fragment: &Fragment,
         session_id: u64,
         source_routing_header: &SourceRoutingHeader,
-        sender: &Sender<(NodeId, NodeId, ServerToClientMessage)>,
+        sender: &Sender<(NodeId, ServerToClientMessage)>,
     ) {
         // Update stats
         self.stats.inc_fragments_received();
@@ -31,7 +31,7 @@ impl RustbustersClient {
                     self.stats.inc_messages_received();
 
                     if let FromServer(s2c_msg) = &msg {
-                        if sender.send((source, self.id, s2c_msg.clone())).is_err() {
+                        if sender.send((source, s2c_msg.clone())).is_err() {
                             warn!("Client {}: Unable to send message to UI", self.id);
                         }
                     } else {
