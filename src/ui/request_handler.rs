@@ -2,7 +2,9 @@ use crate::ui::api::get_clients::get_clients;
 use crate::ui::api::get_registered_users::get_registered_users;
 use crate::ui::api::get_servers::get_servers;
 use crate::ui::api::get_static_content::provide_static_file;
+use crate::ui::api::post_register::post_register;
 use crate::ui::api::post_send_message::post_send_message;
+use crate::ui::api::post_unregister::post_unregister;
 use std::collections::HashMap;
 use std::io::Error;
 use tiny_http::{Method, Request, Response};
@@ -36,9 +38,8 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
 
         // API POST
         (Method::Post, "/api/send-to") => post_send_message(&mut req),
-        (Method::Post, "/api/register") => {
-            Response::from_string("Register request received").with_status_code(200)
-        }
+        (Method::Post, "/api/register") => post_register(&mut req),
+        (Method::Post, "/api/unregister") => post_unregister(&mut req),
         _not_found => Response::from_string("404 Not Found").with_status_code(404),
     };
 

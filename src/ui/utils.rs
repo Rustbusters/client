@@ -1,5 +1,7 @@
+use common_utils::MessageContent;
 use serde_json::Value;
 use serde_json::Value::Number;
+use tiny_http::Request;
 
 pub(crate) fn get_mime_type(path: &str) -> &'static str {
     if path.ends_with(".html") {
@@ -33,6 +35,24 @@ pub(crate) fn get_mime_type(path: &str) -> &'static str {
     }
 }
 
+pub(crate) fn get_request_body(req: &mut Request) -> Value {
+    // read the body of the request
+    let mut body = String::new();
+    req.as_reader()
+        .read_to_string(&mut body)
+        .unwrap_or_else(|_| {
+            println!("Failed to read request body");
+            0
+        });
+    println!("POST request body: {body}",);
+
+    // parse the body as JSON
+    serde_json::from_str(&body).unwrap_or_else(|_| {
+        println!("Failed to parse request body");
+        Value::Null
+    })
+}
+
 pub(crate) fn get_number_from_json(json: &Value, field: &str) -> Option<u8> {
     match &json[field] {
         Number(num) => num.as_u64().map(|value| value as u8),
@@ -52,20 +72,6 @@ pub(crate) enum Content {
     Bytes(Vec<u8>),
 }
 
-pub(crate) fn get_content_from_json(json: &Value) -> Option<Content> {
-    match &json["content"] {
-        Value::String(s) => Some(Content::String(s.clone())),
-        Value::Array(bytes) => {
-            let mut vec = Vec::new();
-            for byte in bytes {
-                if let Number(num) = byte {
-                    vec.push(num.as_u64()? as u8);
-                } else {
-                    return None;
-                }
-            }
-            Some(Content::Bytes(vec))
-        }
-        _ => None,
-    }
+pub(crate) fn get_content_from_msg(json: &Value) -> Option<MessageContent> {
+    serde_json::from_value(json["content"].clone()).ok()
 }

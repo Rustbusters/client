@@ -48,11 +48,11 @@ impl RustbustersClient {
         // if it is empty, run the http server
         if clients_state.is_empty() {
             let http_handle = thread::spawn(run_http_server);
-            let websocket_handle = thread::spawn(websocket::run_websocket_server);
+            // let websocket_handle = thread::spawn(websocket::run_websocket_server);
 
             let mut threads = THREADS.lock().unwrap();
             threads.push(http_handle);
-            threads.push(websocket_handle);
+            // threads.push(websocket_handle);
         }
 
         // add the client to the list
