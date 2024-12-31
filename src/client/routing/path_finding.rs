@@ -11,13 +11,14 @@ impl Eq for FloatKey {}
 
 impl PartialOrd for FloatKey {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        Some(std::cmp::Ord::cmp(self, other))
     }
 }
 
 impl Ord for FloatKey {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        // Invertiamo l'ordine per fare in modo che BinaryHeap diventi un min-heap
+        other.0.partial_cmp(&self.0).unwrap_or(Ordering::Equal)
     }
 }
 
@@ -26,7 +27,6 @@ impl RustbustersClient {
         let mut distance: HashMap<NodeId, f32> = HashMap::new();
         let mut heap: BinaryHeap<(FloatKey, NodeId)> = BinaryHeap::new();
         let mut prev: HashMap<NodeId, NodeId> = HashMap::new();
-
         // Inizializza le distanze
         distance.insert(self.id, 0.0);
         heap.push((FloatKey(0.0), self.id));
