@@ -65,6 +65,6 @@ pub(crate) fn post_send_message(req: &mut Request) -> Response<Cursor<Vec<u8>>> 
             sender.send((server_id.unwrap(), message)).ok();
         }
 
-        Response::from_string("POST request received")
+        Response::from_string("Message sent").with_status_code(200)
     }
 }

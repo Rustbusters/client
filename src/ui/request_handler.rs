@@ -1,4 +1,5 @@
 use crate::ui::api::get_clients::get_clients;
+use crate::ui::api::get_registered_users::get_registered_users;
 use crate::ui::api::get_servers::get_servers;
 use crate::ui::api::get_static_content::provide_static_file;
 use crate::ui::api::post_send_message::post_send_message;
@@ -30,14 +31,15 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
         (Method::Get, "/") => provide_static_file("/index.html"),
         (Method::Get, "/api/clients") => get_clients(),
         (Method::Get, "/api/servers") => get_servers(&query_params),
+        (Method::Get, "/api/registered-users") => get_registered_users(&query_params),
         (Method::Get, path) if path.starts_with('/') => provide_static_file(path),
+
         // API POST
         (Method::Post, "/api/send-to") => post_send_message(&mut req),
-        (Method::Post, "/api/register") => Response::from_string("POST request received"),
-        _ => {
-            let response = Response::from_string("404 Not Found");
-            response.with_status_code(404)
+        (Method::Post, "/api/register") => {
+            Response::from_string("Register request received").with_status_code(200)
         }
+        _not_found => Response::from_string("404 Not Found").with_status_code(404),
     };
 
     req.respond(response)
