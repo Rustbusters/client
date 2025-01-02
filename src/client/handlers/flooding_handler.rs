@@ -1,3 +1,4 @@
+use crate::client::routing::edge_stats::BASE_WEIGHT;
 use crate::client::RustbustersClient;
 use common_utils::HostEvent::ControllerShortcut;
 use log::info;
@@ -18,7 +19,7 @@ impl RustbustersClient {
                 self.known_nodes.lock().unwrap().insert(*to_id, *to_type);
 
                 // Update topology
-                self.topology.add_edge(*from_id, *to_id, 1.0);
+                self.topology.add_edge(*from_id, *to_id, BASE_WEIGHT);
             }
         }
 

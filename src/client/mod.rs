@@ -5,6 +5,7 @@ mod packet_sender;
 mod routing;
 mod ui_connector;
 
+use crate::client::routing::edge_stats::EdgeStats;
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select_biased, Receiver, Sender};
 use log::{error, info};
@@ -31,6 +32,7 @@ pub struct RustbustersClient {
     // session_id -> (fragments, num_fragments) (u8 is the number of fragments received) (for reassembly)
     pending_received: HashMap<u64, (Vec<Option<Fragment>>, u64)>,
     stats: Stats,
+    edge_stats: HashMap<(NodeId, NodeId), EdgeStats>,
 }
 
 impl RustbustersClient {
@@ -55,6 +57,7 @@ impl RustbustersClient {
             pending_sent: HashMap::new(),
             pending_received: HashMap::new(),
             stats: Stats::new(),
+            edge_stats: HashMap::new(),
         }
     }
 

@@ -13,14 +13,16 @@ impl RustbustersClient {
         // Update stats
         self.stats.inc_nacks_received();
 
-        match self.pending_sent.get(&(session_id, fragment_index)) {
-            None => {
-                warn!("Client {}: Nack for unknown fragment", self.id);
-            }
+        match self
+            .pending_sent
+            .get(&(session_id, fragment_index))
+            .cloned()
+        {
             Some(packet) => {
                 if let Dropped = nack_type {
                     info!("Client {}: Resending fragment {}", self.id, fragment_index);
-                    // TODO: decide if the fragment and message counters should be incremented on resend, only on ack or always
+                    self.update_edge_stats(&packet.routing_header.hops.clone());
+
                     if let Some(sender) = self.packet_send.get(&packet.routing_header.hops[1]) {
                         if let Err(err) = sender.send(packet.clone()) {
                             warn!(
@@ -47,9 +49,14 @@ impl RustbustersClient {
                                 self.id, fragment_index, nack_type
                             );
                         }
-                        _ => {}
+                        _ => {
+                            unreachable!("Unexpected nack type");
+                        }
                     }
                 }
+            }
+            None => {
+                warn!("Client {}: Nack for unknown fragment", self.id);
             }
         }
     }
