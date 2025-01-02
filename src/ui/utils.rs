@@ -44,7 +44,7 @@ pub(crate) fn get_request_body(req: &mut Request) -> Value {
             println!("Failed to read request body");
             0
         });
-    println!("POST request body: {body}",);
+    // println!("POST request body: {body}",);
 
     // parse the body as JSON
     serde_json::from_str(&body).unwrap_or_else(|_| {

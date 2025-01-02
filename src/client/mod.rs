@@ -78,9 +78,6 @@ impl RustbustersClient {
                         let server_id = msg.0;
                         let message = msg.1;
 
-                        //pretty print
-                        println!("Client {} - Sending message to {} with content: {:?}", self.id, server_id, message);
-
                         self.handle_ui_message(server_id, message);
                     } else {
                         error!("Client {} - Error in receiving command", self.id);
