@@ -1,6 +1,5 @@
-mod assembler;
 mod commands;
-mod disassembler;
+mod fragmentation;
 mod handlers;
 mod packet_sender;
 mod routing;
