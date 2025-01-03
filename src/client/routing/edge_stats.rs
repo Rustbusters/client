@@ -10,6 +10,9 @@ pub(crate) struct EdgeStats {
     current_pdr: f32,
     confidence: f32,
     alpha: f32,
+    consecutive_nacks: u32,
+    consecutive_acks: u32,
+    last_was_nack: bool,
 }
 
 impl EdgeStats {
@@ -19,14 +22,43 @@ impl EdgeStats {
             current_pdr: 0.0,
             confidence: 0.0,
             alpha,
+            consecutive_nacks: 0,
+            consecutive_acks: 0,
+            last_was_nack: false,
         }
     }
 
     fn update(&mut self, dropped: bool) {
         self.packets_sent += 1;
 
-        let new_value = if dropped { 1.0 } else { 0.0 };
+        if dropped {
+            if self.last_was_nack {
+                self.consecutive_nacks += 1;
+            } else {
+                self.consecutive_nacks = 1;
+                self.consecutive_acks = 0;
+            }
+            self.last_was_nack = true;
+        } else {
+            if self.last_was_nack {
+                self.consecutive_acks = 1;
+                self.consecutive_nacks = 0;
+            } else {
+                self.consecutive_acks += 1;
+            }
+            self.last_was_nack = false;
+        }
 
+        // Aggiorna alpha basandosi sui NACK consecutivi
+        if self.consecutive_nacks >= 3 {
+            // Aumenta alpha per reagire più velocemente
+            self.alpha = (self.alpha + 0.1).min(0.8);
+        } else if self.consecutive_acks >= 5 {
+            // Diminuisci alpha per stabilizzare
+            self.alpha = (self.alpha - 0.05).max(0.2);
+        }
+
+        let new_value = if dropped { 1.0 } else { 0.0 };
         // EMA = α * current_value + (1 - α) * old_EMA
         self.current_pdr = self.alpha * new_value + (1.0 - self.alpha) * self.current_pdr;
         self.confidence = 1.0 / (1.0 + (-0.1 * self.packets_sent as f32).exp());
@@ -37,7 +69,21 @@ impl EdgeStats {
             return BASE_WEIGHT;
         }
 
-        BASE_WEIGHT * (1.0 + self.current_pdr * self.confidence)
+        let consecutive_penalty = if self.consecutive_nacks > 2 {
+            0.5 * (self.consecutive_nacks as f32 - 2.0)
+        } else {
+            0.0
+        };
+
+        BASE_WEIGHT * (1.0 + self.current_pdr * self.confidence + consecutive_penalty)
+    }
+
+    pub(crate) fn get_estimated_pdr(&self) -> f32 {
+        self.current_pdr
+    }
+
+    pub(crate) fn get_consecutive_nacks(&self) -> u32 {
+        self.consecutive_nacks
     }
 }
 
@@ -48,7 +94,7 @@ impl RustbustersClient {
             .or_insert_with(|| EdgeStats::new(0.2)) // Alpha = 0.2 come valore di default
     }
 
-    pub(crate) fn update_edge_stats(&mut self, nack_path: &[NodeId]) {
+    pub(crate) fn update_edge_stats_on_nack(&mut self, nack_path: &[NodeId]) {
         if nack_path.len() < 2 {
             return;
         }
@@ -80,12 +126,6 @@ impl RustbustersClient {
             // Aggiorna il peso nel grafo
             let weight = stats.get_edge_weight();
             self.topology.update_edge(from, to, weight);
-        }
-    }
-
-    pub(crate) fn adjust_alpha(&mut self, from: NodeId, to: NodeId, new_alpha: f32) {
-        if let Some(stats) = self.edge_stats.get_mut(&(from, to)) {
-            stats.alpha = new_alpha.clamp(0.0, 1.0);
         }
     }
 }
