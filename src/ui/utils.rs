@@ -67,11 +67,6 @@ pub(crate) fn get_string_from_json(json: &Value, field: &str) -> Option<String> 
     }
 }
 
-pub(crate) enum Content {
-    String(String),
-    Bytes(Vec<u8>),
-}
-
 pub(crate) fn get_content_from_msg(json: &Value) -> Option<MessageContent> {
     serde_json::from_value(json["content"].clone()).ok()
 }

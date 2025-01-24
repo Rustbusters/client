@@ -1,11 +1,17 @@
 use crate::client::RustbustersClient;
-use common_utils::{HostEvent, HostMessage};
-use log::{debug, info};
+use common_utils::{HostEvent, HostMessage, ServerToClientMessage};
+use crossbeam_channel::Sender;
+use log::{debug, info, warn};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Packet, PacketType};
 
 impl RustbustersClient {
-    pub(crate) fn send_message(&mut self, destination_id: NodeId, message: HostMessage) {
+    pub(crate) fn send_message(
+        &mut self,
+        destination_id: NodeId,
+        message: HostMessage,
+        ws_to_ui_sender: &Sender<(NodeId, ServerToClientMessage)>,
+    ) {
         // Compute the route to the destination
         if let Some(route) = self.find_weighted_path(destination_id) {
             // Increment session_id_counter
@@ -34,7 +40,19 @@ impl RustbustersClient {
                 let next_hop = packet.routing_header.hops[1];
                 if let Some(sender) = self.packet_send.get(&next_hop) {
                     // TODO: in indiv. contr., better handling of send errors
-                    let _ = sender.send(packet.clone());
+                    if let Err(e) = sender.send(packet.clone()) {
+                        warn!(
+                            "Client {}: Failed to send packet to {}: {:?}",
+                            self.id, next_hop, e
+                        );
+                        let error_msg = ServerToClientMessage::SendingError {
+                            message: "Failed to send message! Retry in a few seconds".to_string(),
+                        };
+
+                        if ws_to_ui_sender.send((self.id, error_msg)).is_err() {
+                            warn!("Client {}: Unable to send error message to UI", self.id);
+                        }
+                    }
                     self.pending_sent
                         .entry((session_id, fragment_index))
                         .or_insert(packet);
@@ -52,6 +70,13 @@ impl RustbustersClient {
             );
         } else {
             info!("Client {}: No route to {}", self.id, destination_id);
+            let error_msg = ServerToClientMessage::SendingError {
+                message: "Destination unreachable! Retry in a few seconds".to_string(),
+            };
+
+            if ws_to_ui_sender.send((self.id, error_msg)).is_err() {
+                warn!("Client {}: Unable to send error message to UI", self.id);
+            }
         }
     }
 }
