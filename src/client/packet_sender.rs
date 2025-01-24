@@ -46,7 +46,11 @@ impl RustbustersClient {
                             self.id, next_hop, e
                         );
                         let error_msg = ServerToClientMessage::SendingError {
-                            message: "Failed to send message! Retry in a few seconds".to_string(),
+                            error: "Failed to send message! Retry in a few seconds".to_string(),
+                            message: match message.clone() {
+                                HostMessage::FromClient(client_msg) => client_msg,
+                                _ => return,
+                            },
                         };
 
                         if ws_to_ui_sender.send((self.id, error_msg)).is_err() {
@@ -71,7 +75,11 @@ impl RustbustersClient {
         } else {
             info!("Client {}: No route to {}", self.id, destination_id);
             let error_msg = ServerToClientMessage::SendingError {
-                message: "Destination unreachable! Retry in a few seconds".to_string(),
+                error: "Destination unreachable! Retry in a few seconds".to_string(),
+                message: match message {
+                    HostMessage::FromClient(client_msg) => client_msg,
+                    _ => return,
+                },
             };
 
             if ws_to_ui_sender.send((self.id, error_msg)).is_err() {
