@@ -39,7 +39,6 @@ impl RustbustersClient {
                 // Send the packet to the first hop
                 let next_hop = packet.routing_header.hops[1];
                 if let Some(sender) = self.packet_send.get(&next_hop) {
-                    // TODO: in indiv. contr., better handling of send errors
                     if let Err(e) = sender.send(packet.clone()) {
                         warn!(
                             "Client {}: Failed to send packet to {}: {:?}",
@@ -53,7 +52,8 @@ impl RustbustersClient {
                             },
                         };
 
-                        if ws_to_ui_sender.send((self.id, error_msg)).is_err() {
+                        // set to 0 because server_id is not relevant
+                        if ws_to_ui_sender.send((0, error_msg)).is_err() {
                             warn!("Client {}: Unable to send error message to UI", self.id);
                         }
                     }
@@ -82,7 +82,8 @@ impl RustbustersClient {
                 },
             };
 
-            if ws_to_ui_sender.send((self.id, error_msg)).is_err() {
+            // set to 0 because server_id is not relevant
+            if ws_to_ui_sender.send((0, error_msg)).is_err() {
                 warn!("Client {}: Unable to send error message to UI", self.id);
             }
         }
