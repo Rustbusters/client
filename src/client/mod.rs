@@ -13,9 +13,11 @@ use petgraph::prelude::GraphMap;
 use petgraph::Undirected;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use wg_2024::network::NodeId;
 use wg_2024::packet::{Fragment, NodeType, Packet};
+
+const DEFAULT_DISCOVERY_INTERVAL: Duration = Duration::from_secs(20);
 
 pub struct RustbustersClient {
     pub(crate) id: NodeId,
@@ -33,6 +35,8 @@ pub struct RustbustersClient {
     pending_received: HashMap<u64, (Vec<Option<Fragment>>, u64)>,
     stats: Stats,
     edge_stats: HashMap<(NodeId, NodeId), EdgeStats>,
+    last_discovery: Instant,
+    discovery_interval: Duration,
 }
 
 impl RustbustersClient {
@@ -42,8 +46,14 @@ impl RustbustersClient {
         controller_recv: Receiver<HostCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
+        discovery_interval: Option<Duration>,
     ) -> Self {
-        info!("Client {} spawned succesfully", id);
+        let discovery_interval = discovery_interval.unwrap_or(DEFAULT_DISCOVERY_INTERVAL);
+        info!(
+            "Client {} spawned successfully with discovery interval {:?}",
+            id, discovery_interval
+        );
+
         Self {
             id,
             controller_send,
@@ -53,12 +63,18 @@ impl RustbustersClient {
             known_nodes: Arc::new(Mutex::new(HashMap::new())),
             topology: GraphMap::new(),
             flood_id_counter: 73,    // arbitrary value
-            session_id_counter: 173, // arbitrary value
+            session_id_counter: 73, // arbitrary value
             pending_sent: HashMap::new(),
             pending_received: HashMap::new(),
             stats: Stats::new(),
             edge_stats: HashMap::new(),
+            last_discovery: Instant::now(),
+            discovery_interval,
         }
+    }
+
+    fn should_perform_discovery(&self) -> bool {
+        self.last_discovery.elapsed() >= self.discovery_interval
     }
 
     pub fn run(&mut self) {
@@ -73,6 +89,13 @@ impl RustbustersClient {
         self.discover_network();
 
         loop {
+            // Check if we need to perform discovery
+            if self.should_perform_discovery() {
+                info!("Client {}: Performing periodic network discovery", self.id);
+                self.discover_network();
+                self.last_discovery = Instant::now();
+            }
+
             select_biased! {
                 // Handle UI commands
                 recv(ui_to_ws_receiver) -> msg_to_srv => {
