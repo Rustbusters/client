@@ -80,7 +80,7 @@ impl RustbustersClient {
                         let server_id = msg.0;
                         let message = msg.1;
 
-                        self.handle_ui_message(server_id, message);
+                        self.handle_ui_message(server_id, message, &ws_to_ui_sender);
                     } else {
                         error!("Client {} - Error in receiving command", self.id);
                     }
@@ -88,7 +88,7 @@ impl RustbustersClient {
                 // Handle SC commands
                 recv(self.controller_recv) -> command => {
                     if let Ok(cmd) = command {
-                        self.handle_command(cmd);
+                        self.handle_command(cmd, &ws_to_ui_sender);
                     } else {
                         error!("Client {} - Error in receiving command", self.id);
                     }

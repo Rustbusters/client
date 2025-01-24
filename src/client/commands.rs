@@ -1,9 +1,17 @@
 use crate::client::RustbustersClient;
-use common_utils::{ClientToServerMessage, HostCommand, HostEvent, HostMessage};
+use common_utils::{
+    ClientToServerMessage, HostCommand, HostEvent, HostMessage, ServerToClientMessage,
+};
+use crossbeam_channel::Sender;
 use log::warn;
+use wg_2024::network::NodeId;
 
 impl RustbustersClient {
-    pub(crate) fn handle_command(&mut self, command: HostCommand) {
+    pub(crate) fn handle_command(
+        &mut self,
+        command: HostCommand,
+        ws_to_ui_sender: &Sender<(NodeId, ServerToClientMessage)>,
+    ) {
         match command {
             HostCommand::SendRandomMessage(dest) => {
                 self.send_message(
@@ -11,6 +19,7 @@ impl RustbustersClient {
                     HostMessage::FromClient(ClientToServerMessage::RegisterUser {
                         name: "Random".to_string(),
                     }),
+                    ws_to_ui_sender,
                 );
             }
             HostCommand::DiscoverNetwork => {
