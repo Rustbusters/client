@@ -1,4 +1,5 @@
 use common_utils::MessageContent;
+use log::{debug, error, warn};
 use serde_json::Value;
 use serde_json::Value::Number;
 use tiny_http::Request;
@@ -41,14 +42,14 @@ pub(crate) fn get_request_body(req: &mut Request) -> Value {
     req.as_reader()
         .read_to_string(&mut body)
         .unwrap_or_else(|_| {
-            println!("Failed to read request body");
+            warn!("[CLIENT-HTTP] Failed to read request body");
             0
         });
-    // println!("POST request body: {body}",);
+    debug!("[CLIENT-HTTP] POST request body: {body}",);
 
     // parse the body as JSON
     serde_json::from_str(&body).unwrap_or_else(|_| {
-        println!("Failed to parse request body");
+        error!("[CLIENT-HTTP] Failed to parse request body");
         Value::Null
     })
 }

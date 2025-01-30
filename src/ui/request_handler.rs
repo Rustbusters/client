@@ -5,6 +5,7 @@ use crate::ui::api::get_static_content::provide_static_file;
 use crate::ui::api::post_register::post_register;
 use crate::ui::api::post_send_message::post_send_message;
 use crate::ui::api::post_unregister::post_unregister;
+use log::info;
 use std::collections::HashMap;
 use std::io::Error;
 use tiny_http::{Method, Request, Response};
@@ -27,7 +28,7 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
             .collect()
     });
 
-    println!("Received request: {method} {full_url}");
+    info!("[CLIENT-HTTP] Received request: {method} {full_url}");
     let response = match (method, path) {
         // API GET
         (Method::Get, "/") => provide_static_file("/index.html"),

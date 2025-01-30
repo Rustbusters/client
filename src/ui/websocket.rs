@@ -1,7 +1,8 @@
 use crate::ui::{CLIENTS_STATE, HTTP_PORT, THREADS};
+use log::info;
 use std::net::{TcpListener, TcpStream};
 use std::thread;
-use tungstenite::{Message, WebSocket};
+use tungstenite::{Error, Message, WebSocket};
 
 const WEBSOCKET_PORT: u16 = HTTP_PORT + 1;
 
@@ -11,7 +12,6 @@ pub(crate) fn run_websocket_server() {
 
     for stream in listener.incoming() {
         if let Ok(ws_stream) = stream {
-            println!("New Connection");
             let web_socket_updates = thread::spawn(move || {
                 if let Ok(web_socket_stream) = tungstenite::accept(ws_stream) {
                     handle_new_connection(web_socket_stream);
@@ -24,21 +24,18 @@ pub(crate) fn run_websocket_server() {
                 break;
             }
         } else {
-            // println!("Error");
+            // DO NOTHING
         }
     }
 
-    println!("WebSocket server shutting down");
+    info!("[CLIENT-WS] WebSocket server shutting down");
 }
 
 fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {
-    println!("New WebSocket connection");
+    info!("[CLIENT-WS] New WebSocket connection");
+    ws_stream.get_ref().set_nonblocking(true).unwrap();
 
     loop {
-        if let Ok(msg) = ws_stream.read() {
-            println!("Received message: {msg:?}");
-        }
-
         let clients = CLIENTS_STATE.lock().unwrap().clone();
         for (client_id, client_state) in &clients {
             if let Some(receiver) = &client_state.receiver {
@@ -52,5 +49,12 @@ fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {
                 }
             }
         }
+        drop(clients);
+
+        if let Err(Error::ConnectionClosed | Error::AlreadyClosed) = ws_stream.read() {
+            break;
+        }
     }
+
+    info!("[CLIENT-WS] WebSocket connection closed");
 }

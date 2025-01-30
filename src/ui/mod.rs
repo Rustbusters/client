@@ -68,13 +68,13 @@ impl RustbustersClient {
 }
 
 fn run_http_server() {
-    println!("Visit http://localhost:{HTTP_PORT}");
+    println!("[CLIENT-HTTP] Visit http://localhost:{HTTP_PORT} for the client UI");
     let http_server = Server::http(format!("0.0.0.0:{HTTP_PORT}")).unwrap();
     loop {
         if let Ok(Some(request)) = http_server.try_recv() {
             match request_handler::handle_request(request) {
                 Ok(()) => {}
-                Err(e) => eprintln!("Error handling request: {e}"),
+                Err(e) => eprintln!("[CLIENT-HTTP] Error handling request: {e}"),
             }
         }
     }

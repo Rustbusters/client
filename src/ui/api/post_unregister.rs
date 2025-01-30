@@ -8,8 +8,6 @@ use tiny_http::{Request, Response};
 pub(crate) fn post_unregister(req: &mut Request) -> Response<Cursor<Vec<u8>>> {
     let json_body: Value = get_request_body(req);
 
-    println!("POST request body: {json_body}",);
-
     let client_id = get_number_from_json(&json_body, "client_id");
     let server_id = get_number_from_json(&json_body, "server_id");
 
