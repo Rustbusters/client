@@ -45,7 +45,10 @@ fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {
                         msg.0,
                         serde_json::to_string(&msg.1).expect("Should be serializable")
                     );
-                    ws_stream.send(Message::Text(ws_message.into())).ok();
+                    if let Err(e) = ws_stream.send(Message::Text(ws_message.into())) {
+                        eprintln!("[CLIENT-WS] Failed to send message: {e:?}");
+                    }
+                    ws_stream.flush().unwrap();
                 }
             }
         }
