@@ -50,7 +50,7 @@ impl RustbustersClient {
             PacketType::Nack(nack) => {
                 // Handle Negative Acknowledgments
                 info!("Client {}: Received Nack {nack:?}", self.id);
-                self.handle_nack(packet.session_id, nack.fragment_index, nack.nack_type);
+                self.handle_nack(packet.session_id, nack.fragment_index, nack.nack_type, packet.routing_header);
             }
         }
     }

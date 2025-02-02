@@ -1,5 +1,6 @@
 use crate::client::RustbustersClient;
 use log::{info, warn};
+use wg_2024::network::SourceRoutingHeader;
 use wg_2024::packet::NackType::Dropped;
 use wg_2024::packet::{NackType, Packet};
 
@@ -9,6 +10,7 @@ impl RustbustersClient {
         session_id: u64,
         fragment_index: u64,
         nack_type: NackType,
+        nack_header: SourceRoutingHeader,
     ) {
         // Update stats
         self.stats.inc_nacks_received();
@@ -23,10 +25,10 @@ impl RustbustersClient {
                     info!("Client {}: Resending fragment {}", self.id, fragment_index);
 
                     // Update stats for the dropping edge
-                    self.update_edge_stats_on_nack(&packet.routing_header.hops.clone());
+                    self.update_edge_stats_on_nack(&nack_header.hops);
 
                     // Find a better path to reduce the probability of dropping the fragment
-                    self.reroute_packet(&mut packet, fragment_index);
+                    self.reroute_packet(&mut packet, fragment_index, &nack_header);
 
                     // Resend the fragment
                     if let Some(sender) = self.packet_send.get(&packet.routing_header.hops[1]) {
@@ -66,9 +68,9 @@ impl RustbustersClient {
         }
     }
 
-    fn reroute_packet(&mut self, packet: &mut Packet, fragment_index: u64) {
-        let drop_from = packet.routing_header.hops[0];
-        let drop_to = packet.routing_header.hops[1];
+    fn reroute_packet(&mut self, packet: &mut Packet, fragment_index: u64, nack_header: &SourceRoutingHeader) {
+        let drop_from = nack_header.hops[0];
+        let drop_to = nack_header.hops[1];
 
         if let Some(stats) = self.edge_stats.get_mut(&(drop_from, drop_to)) {
             // recompute path if the estimated PDR is above 0.3

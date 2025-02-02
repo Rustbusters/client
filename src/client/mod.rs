@@ -2,7 +2,7 @@ mod commands;
 mod fragmentation;
 mod handlers;
 mod packet_sender;
-mod routing;
+pub(crate) mod routing;
 mod ui_connector;
 
 use crate::client::routing::edge_stats::EdgeStats;
@@ -26,7 +26,7 @@ pub struct RustbustersClient {
     packet_recv: Receiver<Packet>,
     packet_send: HashMap<NodeId, Sender<Packet>>,
     pub(crate) known_nodes: Arc<Mutex<HashMap<NodeId, NodeType>>>,
-    topology: GraphMap<NodeId, f32, Undirected>,
+    pub(crate) topology: GraphMap<NodeId, f32, Undirected>,
     flood_id_counter: u64,
     session_id_counter: u64,
     // (session_id, fragment_index) -> packet
@@ -97,6 +97,14 @@ impl RustbustersClient {
             }
 
             select_biased! {
+                // Handle SC commands
+                recv(self.controller_recv) -> command => {
+                    if let Ok(cmd) = command {
+                        self.handle_command(cmd, &ws_to_ui_sender);
+                    } else {
+                        error!("Client {} - Error in receiving command", self.id);
+                    }
+                },
                 // Handle UI commands
                 recv(ui_to_ws_receiver) -> msg_to_srv => {
                     if let Ok(msg) = msg_to_srv {
@@ -104,14 +112,6 @@ impl RustbustersClient {
                         let message = msg.1;
 
                         self.handle_ui_message(server_id, message, &ws_to_ui_sender);
-                    } else {
-                        error!("Client {} - Error in receiving command", self.id);
-                    }
-                },
-                // Handle SC commands
-                recv(self.controller_recv) -> command => {
-                    if let Ok(cmd) = command {
-                        self.handle_command(cmd, &ws_to_ui_sender);
                     } else {
                         error!("Client {} - Error in receiving command", self.id);
                     }
