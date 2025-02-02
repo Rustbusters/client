@@ -6,6 +6,8 @@ use tungstenite::{Error, Message, WebSocket};
 
 const WEBSOCKET_PORT: u16 = HTTP_PORT + 1;
 
+/// Runs the WebSocket server that handles client connections
+/// and message distribution
 pub(crate) fn run_websocket_server() {
     let listener = TcpListener::bind(format!("0.0.0.0:{WEBSOCKET_PORT}")).unwrap();
     listener.set_nonblocking(true).unwrap();
@@ -31,6 +33,11 @@ pub(crate) fn run_websocket_server() {
     info!("[CLIENT-WS] WebSocket server shutting down");
 }
 
+/// Handles a new WebSocket connection, managing message forwarding
+/// between clients
+/// 
+/// ### Arguments
+/// * `ws_stream` - The WebSocket stream for the new connection
 fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {
     info!("[CLIENT-WS] New WebSocket connection");
     ws_stream.get_ref().set_nonblocking(true).unwrap();

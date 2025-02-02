@@ -8,6 +8,19 @@ use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Ack, Fragment, Packet, PacketType};
 
 impl RustbustersClient {
+    /// Handles incoming message fragments and sends acknowledgments.
+    ///
+    /// This function processes received message fragments by:
+    /// 1. Updating reception statistics
+    /// 2. Attempting to reassemble the complete message if all fragments are received
+    /// 3. Sending acknowledgment back to the source
+    /// 4. Forwarding reassembled messages to the UI and controller if complete
+    ///
+    /// ### Arguments
+    /// * `fragment` - The received message fragment
+    /// * `session_id` - The ID of the message session
+    /// * `source_routing_header` - Routing information for the response
+    /// * `sender` - Channel to send messages to the UI
     pub(crate) fn handle_message_fragment(
         &mut self,
         fragment: &Fragment,
@@ -101,9 +114,14 @@ impl RustbustersClient {
         }
     }
 
-    /// Insert the fragment in the pending_received map at index fragment_index.
+    /// Stores a fragment in the pending received collection.
     ///
-    /// Return true if all fragments have been received
+    /// ### Arguments
+    /// * `session_id` - The ID of the message session
+    /// * `fragment` - The fragment to store
+    ///
+    /// ### Returns
+    /// `true` if all fragments for the session have been received, `false` otherwise
     fn set_pending(&mut self, session_id: u64, fragment: Fragment) -> bool {
         let fragment_index = fragment.fragment_index;
         let total_n_fragments = fragment.total_n_fragments;

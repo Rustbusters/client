@@ -7,6 +7,11 @@ use log::warn;
 use wg_2024::network::NodeId;
 
 impl RustbustersClient {
+    /// Handles various commands received from the controller
+    /// 
+    /// ### Arguments
+    /// * `command` - The command to be executed
+    /// * `ws_to_ui_sender` - Channel sender for sending messages back to the UI
     pub(crate) fn handle_command(
         &mut self,
         command: HostCommand,

@@ -5,6 +5,12 @@ use serde_json::Value;
 use std::io::Cursor;
 use tiny_http::{Request, Response};
 
+/// Processes an unregister request from a client
+/// 
+/// ### Arguments
+/// * `req` - The HTTP request containing the unregistration details
+/// 
+/// Returns an HTTP response indicating the result of the operation
 pub(crate) fn post_unregister(req: &mut Request) -> Response<Cursor<Vec<u8>>> {
     let json_body: Value = get_request_body(req);
 

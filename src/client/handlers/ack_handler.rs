@@ -2,6 +2,17 @@ use crate::client::RustbustersClient;
 use log::{info, warn};
 
 impl RustbustersClient {
+    /// Processes acknowledgments for sent message fragments.
+    ///
+    /// This function:
+    /// 1. Updates acknowledgment statistics
+    /// 2. Removes acknowledged fragments from pending sent collection
+    /// 3. Updates routing statistics for successful transmissions
+    /// 4. Logs when all fragments of a session are acknowledged
+    ///
+    /// ### Arguments
+    /// * `session_id` - The ID of the message session
+    /// * `fragment_index` - The index of the acknowledged fragment
     pub(crate) fn handle_ack(&mut self, session_id: u64, fragment_index: u64) {
         // Update stats
         self.stats.inc_acks_received();

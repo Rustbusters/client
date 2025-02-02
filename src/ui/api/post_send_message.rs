@@ -7,6 +7,12 @@ use serde_json::Value;
 use std::io::Cursor;
 use tiny_http::{Request, Response};
 
+/// Processes a message sending request between users
+/// 
+/// ### Arguments
+/// * `req` - The HTTP request containing the message details
+/// 
+/// Returns an HTTP response indicating the result of the operation
 pub(crate) fn post_send_message(req: &mut Request) -> Response<Cursor<Vec<u8>>> {
     // get the body of the request
     let json_body: Value = get_request_body(req);

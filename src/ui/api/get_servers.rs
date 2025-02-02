@@ -6,10 +6,14 @@ use tiny_http::{Header, Response};
 use wg_2024::network::NodeId;
 use wg_2024::packet::NodeType;
 
+/// Returns a list of known server nodes for a specific client
+/// 
+/// ### Arguments
+/// * `query_params` - HashMap containing query parameters, must include 'id' parameter for client identification
 pub(crate) fn get_servers(
     query_params: &Option<HashMap<String, String>>,
 ) -> Response<Cursor<Vec<u8>>> {
-    // Ottieni il parametro `id` dalla query string
+    // Get the 'id' parameter from query string
     let id = query_params
         .as_ref()
         .and_then(|params| params.get("id"))

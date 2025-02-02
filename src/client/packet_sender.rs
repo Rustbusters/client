@@ -6,6 +6,12 @@ use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Packet, PacketType};
 
 impl RustbustersClient {
+    /// Sends a message to a specific destination node using source routing
+    /// 
+    /// ### Arguments
+    /// * `destination_id` - The ID of the destination node
+    /// * `message` - The message to be sent
+    /// * `ws_to_ui_sender` - Channel sender for sending error messages back to the UI
     pub(crate) fn send_message(
         &mut self,
         destination_id: NodeId,

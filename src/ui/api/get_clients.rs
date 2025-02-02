@@ -4,6 +4,7 @@ use std::str::FromStr;
 use tiny_http::{Header, Response};
 use wg_2024::network::NodeId;
 
+/// Returns a list of all active client nodes in the system
 pub(crate) fn get_clients() -> Response<Cursor<Vec<u8>>> {
     let clients = CLIENTS_STATE.lock().unwrap();
     // respond with the list of active threads

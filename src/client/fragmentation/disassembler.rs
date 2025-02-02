@@ -3,6 +3,20 @@ use common_utils::HostMessage;
 use wg_2024::packet::{Fragment, FRAGMENT_DSIZE};
 
 impl RustbustersClient {
+    /// Splits a message into multiple fragments of fixed size.
+    ///
+    /// This function serializes a message and splits it into fragments that can be
+    /// transmitted over the network. Each fragment contains:
+    /// - fragment_index: Position in the sequence
+    /// - total_n_fragments: Total number of fragments
+    /// - length: Actual data length in the fragment
+    /// - data: Fixed-size array containing the fragment data
+    ///
+    /// ### Arguments
+    /// * `message` - The message to be fragmented
+    ///
+    /// ### Returns
+    /// A vector containing all fragments of the message
     pub(crate) fn disassemble_message(&self, message: &HostMessage) -> Vec<Fragment> {
         let serialized_str = serde_json::to_string(&message).unwrap();
         let bytes = serialized_str.as_bytes();

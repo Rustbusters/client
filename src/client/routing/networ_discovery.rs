@@ -5,6 +5,15 @@ use wg_2024::packet::NodeType::Client;
 use wg_2024::packet::{FloodRequest, Packet, PacketType};
 
 impl RustbustersClient {
+    /// Initiates network discovery by flooding FloodRequest packets.
+    /// 
+    /// This function:
+    /// 1. Generates a unique flood ID
+    /// 2. Creates a FloodRequest packet with the client's path trace
+    /// 3. Broadcasts the request to all known neighbors
+    ///
+    /// The discovery process helps build the network topology and
+    /// identify available paths to servers.
     pub(crate) fn discover_network(&mut self) {
         // Generate a unique flood_id
         self.flood_id_counter += 1;

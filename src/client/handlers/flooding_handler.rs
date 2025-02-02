@@ -8,6 +8,15 @@ use wg_2024::packet::NodeType::Client;
 use wg_2024::packet::{FloodRequest, FloodResponse, Packet, PacketType};
 
 impl RustbustersClient {
+    /// Processes flood responses to build network topology.
+    ///
+    /// Updates the client's knowledge of:
+    /// - Network topology
+    /// - Known nodes and their types
+    /// - Edge weights for routing decisions
+    ///
+    /// ### Arguments
+    /// * `flood_response` - Contains the path trace of the flood through the network
     pub(crate) fn handle_flood_response(&mut self, flood_response: &FloodResponse) {
         for window in flood_response.path_trace.windows(2) {
             if let [(from_id, from_type), (to_id, to_type)] = window {
@@ -31,6 +40,17 @@ impl RustbustersClient {
         );
     }
 
+    /// Handles incoming flood requests and generates responses.
+    ///
+    /// This function:
+    /// 1. Adds this client to the path trace
+    /// 2. Creates a flood response
+    /// 3. If not the initiator, routes the response back to the initiator
+    ///    else uses the response to learn the network topology
+    ///
+    /// ### Arguments
+    /// * `flood_request` - The received flood request
+    /// * `session_id` - The ID of the flooding session
     pub(crate) fn handle_flood_request(&mut self, flood_request: &FloodRequest, session_id: u64) {
         let mut new_path_trace = flood_request.path_trace.clone();
         new_path_trace.push((self.id, Client));

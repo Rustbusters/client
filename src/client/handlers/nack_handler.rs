@@ -5,6 +5,18 @@ use wg_2024::packet::NackType::Dropped;
 use wg_2024::packet::{NackType, Packet};
 
 impl RustbustersClient {
+    /// Handles negative acknowledgments (NACKs) for message fragments.
+    ///
+    /// This function processes different types of NACKs:
+    /// - Dropped: Attempts to resend the fragment with possibly a new route
+    /// - ErrorInRouting: Updates topology when a drone is unreachable
+    /// - Other types: Handles various routing and destination errors
+    ///
+    /// ### Arguments
+    /// * `session_id` - The ID of the message session
+    /// * `fragment_index` - The index of the fragment that failed
+    /// * `nack_type` - The type of failure that occurred
+    /// * `nack_header` - The source routing header of the NACK
     pub(crate) fn handle_nack(
         &mut self,
         session_id: u64,
@@ -68,6 +80,16 @@ impl RustbustersClient {
         }
     }
 
+    /// Attempts to find a better route for a packet that was dropped.
+    ///
+    /// This function is called when a packet needs to be rerouted due to
+    /// repeated failures or poor link quality. It uses edge statistics
+    /// to make routing decisions.
+    ///
+    /// ### Arguments
+    /// * `packet` - The packet to be rerouted
+    /// * `fragment_index` - The index of the fragment being rerouted
+    /// * `nack_header` - The source routing header of the NACK
     fn reroute_packet(&mut self, packet: &mut Packet, fragment_index: u64, nack_header: &SourceRoutingHeader) {
         let drop_from = nack_header.hops[0];
         let drop_to = nack_header.hops[1];

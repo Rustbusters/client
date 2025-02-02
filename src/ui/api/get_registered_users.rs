@@ -5,6 +5,10 @@ use std::io::Cursor;
 use tiny_http::Response;
 use wg_2024::network::NodeId;
 
+/// Requests the list of registered users from a specific server
+/// 
+/// ### Arguments
+/// * `query_params` - HashMap containing query parameters, must include both 'client_id' and 'server_id'
 pub(crate) fn get_registered_users(
     query_params: &Option<HashMap<String, String>>,
 ) -> Response<Cursor<Vec<u8>>> {

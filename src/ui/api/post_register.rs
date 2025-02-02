@@ -5,6 +5,12 @@ use serde_json::Value;
 use std::io::Cursor;
 use tiny_http::{Request, Response};
 
+/// Processes a registration request from a new user
+/// 
+/// ### Arguments
+/// * `req` - The HTTP request containing the registration details
+/// 
+/// Returns an HTTP response indicating the result of the operation
 pub(crate) fn post_register(req: &mut Request) -> Response<Cursor<Vec<u8>>> {
     let json_body: Value = get_request_body(req);
 
