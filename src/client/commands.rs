@@ -8,7 +8,7 @@ use wg_2024::network::NodeId;
 
 impl RustbustersClient {
     /// Handles various commands received from the controller
-    /// 
+    ///
     /// ### Arguments
     /// * `command` - The command to be executed
     /// * `ws_to_ui_sender` - Channel sender for sending messages back to the UI
@@ -48,6 +48,9 @@ impl RustbustersClient {
             HostCommand::RemoveSender(sender_id) => {
                 self.packet_send.remove(&sender_id);
                 self.discover_network();
+            }
+            _ => {
+                unreachable!("Client {}: Unhandled command: {:?}", self.id, command);
             }
         }
     }

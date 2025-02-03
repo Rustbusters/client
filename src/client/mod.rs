@@ -6,6 +6,7 @@ pub(crate) mod routing;
 mod ui_connector;
 
 use crate::client::routing::edge_stats::EdgeStats;
+use crate::ui::{CLIENTS_STATE, THREADS};
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select_biased, Receiver, Sender};
 use log::{error, info};
@@ -18,6 +19,8 @@ use wg_2024::network::NodeId;
 use wg_2024::packet::{Fragment, NodeType, Packet};
 
 const DEFAULT_DISCOVERY_INTERVAL: Duration = Duration::from_secs(20);
+
+pub(crate) struct KillCommand;
 
 pub struct RustbustersClient {
     pub(crate) id: NodeId,
@@ -37,6 +40,7 @@ pub struct RustbustersClient {
     edge_stats: HashMap<(NodeId, NodeId), EdgeStats>,
     last_discovery: Instant,
     discovery_interval: Duration,
+    killer_sender: Option<Sender<KillCommand>>,
 }
 
 impl RustbustersClient {
@@ -62,7 +66,7 @@ impl RustbustersClient {
             packet_send,
             known_nodes: Arc::new(Mutex::new(HashMap::new())),
             topology: GraphMap::new(),
-            flood_id_counter: 73,    // arbitrary value
+            flood_id_counter: 73,   // arbitrary value
             session_id_counter: 73, // arbitrary value
             pending_sent: HashMap::new(),
             pending_received: HashMap::new(),
@@ -70,6 +74,7 @@ impl RustbustersClient {
             edge_stats: HashMap::new(),
             last_discovery: Instant::now(),
             discovery_interval,
+            killer_sender: None,
         }
     }
 
@@ -82,13 +87,17 @@ impl RustbustersClient {
         let (ui_to_ws_sender, ui_to_ws_receiver) = crossbeam_channel::unbounded();
         let (ws_to_ui_sender, ws_to_ui_receiver) = crossbeam_channel::unbounded();
 
-        self.run_ui(ui_to_ws_sender, ws_to_ui_receiver);
+        let (killer_sender, killer_receiver) = crossbeam_channel::unbounded();
+        self.killer_sender = Some(killer_sender);
+
+        self.run_ui(ui_to_ws_sender, ws_to_ui_receiver, killer_receiver);
 
         // Start network discovery
         info!("Client {} started network discovery", self.id);
         self.discover_network();
 
-        loop {
+        let mut running = true;
+        while running {
             // Check if we need to perform discovery
             if self.should_perform_discovery() {
                 info!("Client {}: Performing periodic network discovery", self.id);
@@ -100,7 +109,15 @@ impl RustbustersClient {
                 // Handle SC commands
                 recv(self.controller_recv) -> command => {
                     if let Ok(cmd) = command {
-                        self.handle_command(cmd, &ws_to_ui_sender);
+                        match cmd {
+                            HostCommand::Stop => {
+                                info!("Client {} - Received Stop command", self.id);
+                                self.stop();
+                                running = false;
+                                break;
+                            }
+                            _ => self.handle_command(cmd, &ws_to_ui_sender),
+                        }
                     } else {
                         error!("Client {} - Error in receiving command", self.id);
                     }
@@ -128,6 +145,31 @@ impl RustbustersClient {
                 }
             }
         }
+
+        info!("Client {} shutting down", self.id);
+        // Wait for threads to finish
+        if let Ok(mut threads) = THREADS.lock() {
+            while let Some(thread) = threads.pop() {
+                let _ = thread.join();
+            }
+        }
+    }
+
+    pub(crate) fn stop(&mut self) {
+        if let Ok(clients) = CLIENTS_STATE.lock() {
+            if clients.len() == 1 {
+                if let Some(sender) = &self.killer_sender {
+                    if sender.send(KillCommand).is_ok() {
+                        info!("Client {} - Sent KillCommand to UI", self.id);
+                    } else {
+                        error!("Client {} - Error in sending KillCommand to UI", self.id);
+                    }
+                }
+            }
+        }
+
+        // Send final shutdown event to SC
+        // self.send_to_sc(HostEvent::Stopped(self.id));
     }
 
     pub(crate) fn send_to_sc(&mut self, event: HostEvent) {
