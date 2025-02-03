@@ -96,8 +96,7 @@ impl RustbustersClient {
         info!("Client {} started network discovery", self.id);
         self.discover_network();
 
-        let mut running = true;
-        while running {
+        loop {
             // Check if we need to perform discovery
             if self.should_perform_discovery() {
                 info!("Client {}: Performing periodic network discovery", self.id);
@@ -113,7 +112,6 @@ impl RustbustersClient {
                             HostCommand::Stop => {
                                 info!("Client {} - Received Stop command", self.id);
                                 self.stop();
-                                running = false;
                                 break;
                             }
                             _ => self.handle_command(cmd, &ws_to_ui_sender),
