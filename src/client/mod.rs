@@ -151,6 +151,8 @@ impl RustbustersClient {
                 let _ = thread.join();
             }
         }
+
+        println!("CLIENT {} ENDED THE RUN FUNCTION!! THREAD EXITED", self.id);
     }
 
     pub(crate) fn stop(&mut self) {

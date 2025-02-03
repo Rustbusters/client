@@ -48,6 +48,7 @@ pub(crate) fn run_websocket_server(killer_receiver: Receiver<KillCommand>) {
     }
 
     info!("[CLIENT-WS] WebSocket server shutting down");
+    println!("CLIENTS WS SERVER ENDED!! THREAD EXITED");
 }
 
 /// Handles a new WebSocket connection, managing message forwarding

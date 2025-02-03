@@ -108,4 +108,5 @@ fn run_http_server(killer_receiver: Receiver<KillCommand>) {
     }
 
     info!("[CLIENT-HTTP] HTTP server shutting down");
+    println!("CLIENTS HTTP SERVER ENDED!! THREAD EXITED");
 }
