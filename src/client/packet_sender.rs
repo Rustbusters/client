@@ -70,9 +70,7 @@ impl RustbustersClient {
                 }
             }
             self.stats.inc_messages_sent();
-            let _ = self
-                .controller_send
-                .send(HostEvent::HostMessageSent(message));
+            self.send_to_sc(HostEvent::HostMessageSent(message));
 
             info!(
                 "Client {}: Sent message to {} via route {:?}",

@@ -24,15 +24,15 @@ pub struct RustbustersClient {
     controller_send: Sender<HostEvent>,
     controller_recv: Receiver<HostCommand>,
     packet_recv: Receiver<Packet>,
-    packet_send: HashMap<NodeId, Sender<Packet>>,
+    pub(crate) packet_send: HashMap<NodeId, Sender<Packet>>,
     pub(crate) known_nodes: Arc<Mutex<HashMap<NodeId, NodeType>>>,
     pub(crate) topology: GraphMap<NodeId, f32, Undirected>,
     flood_id_counter: u64,
     session_id_counter: u64,
     // (session_id, fragment_index) -> packet
-    pending_sent: HashMap<(u64, u64), Packet>,
+    pub(crate) pending_sent: HashMap<(u64, u64), Packet>,
     // session_id -> (fragments, num_fragments) (u8 is the number of fragments received) (for reassembly)
-    pending_received: HashMap<u64, (Vec<Option<Fragment>>, u64)>,
+    pub(crate) pending_received: HashMap<u64, (Vec<Option<Fragment>>, u64)>,
     stats: Stats,
     edge_stats: HashMap<(NodeId, NodeId), EdgeStats>,
     last_discovery: Instant,
