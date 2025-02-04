@@ -6,7 +6,7 @@ pub(crate) mod routing;
 mod ui_connector;
 
 use crate::client::routing::edge_stats::EdgeStats;
-use crate::ui::{CLIENTS_STATE, THREADS};
+use crate::ui::CLIENTS_STATE;
 use common_utils::{HostCommand, HostEvent, Stats};
 use crossbeam_channel::{select_biased, Receiver, Sender};
 use log::{error, info};
@@ -19,8 +19,6 @@ use wg_2024::network::NodeId;
 use wg_2024::packet::{Fragment, NodeType, Packet};
 
 const DEFAULT_DISCOVERY_INTERVAL: Duration = Duration::from_secs(20);
-
-pub(crate) struct KillCommand;
 
 pub struct RustbustersClient {
     pub(crate) id: NodeId,
@@ -40,7 +38,6 @@ pub struct RustbustersClient {
     edge_stats: HashMap<(NodeId, NodeId), EdgeStats>,
     last_discovery: Instant,
     discovery_interval: Duration,
-    killer_sender: Option<Sender<KillCommand>>,
 }
 
 impl RustbustersClient {
@@ -73,8 +70,7 @@ impl RustbustersClient {
             stats: Stats::new(),
             edge_stats: HashMap::new(),
             last_discovery: Instant::now(),
-            discovery_interval,
-            killer_sender: None,
+            discovery_interval
         }
     }
 
@@ -87,16 +83,14 @@ impl RustbustersClient {
         let (ui_to_ws_sender, ui_to_ws_receiver) = crossbeam_channel::unbounded();
         let (ws_to_ui_sender, ws_to_ui_receiver) = crossbeam_channel::unbounded();
 
-        let (killer_sender, killer_receiver) = crossbeam_channel::unbounded();
-        self.killer_sender = Some(killer_sender);
-
-        self.run_ui(ui_to_ws_sender, ws_to_ui_receiver, killer_receiver);
+        self.run_ui(ui_to_ws_sender, ws_to_ui_receiver);
 
         // Start network discovery
         info!("Client {} started network discovery", self.id);
         self.discover_network();
 
-        loop {
+        let mut running = true;
+        while running {
             // Check if we need to perform discovery
             if self.should_perform_discovery() {
                 info!("Client {}: Performing periodic network discovery", self.id);
@@ -111,8 +105,7 @@ impl RustbustersClient {
                         match cmd {
                             HostCommand::Stop => {
                                 info!("Client {} - Received Stop command", self.id);
-                                self.stop();
-                                break;
+                                running = false;
                             }
                             _ => self.handle_command(cmd, &ws_to_ui_sender),
                         }
@@ -146,30 +139,9 @@ impl RustbustersClient {
 
         info!("Client {} shutting down", self.id);
         // Wait for threads to finish
-        if let Ok(mut threads) = THREADS.lock() {
-            while let Some(thread) = threads.pop() {
-                let _ = thread.join();
-            }
+        if let Ok(mut clients) = CLIENTS_STATE.lock() {
+            clients.remove(&self.id);
         }
-
-        println!("CLIENT {} ENDED THE RUN FUNCTION!! THREAD EXITED", self.id);
-    }
-
-    pub(crate) fn stop(&mut self) {
-        if let Ok(clients) = CLIENTS_STATE.lock() {
-            if clients.len() == 1 {
-                if let Some(sender) = &self.killer_sender {
-                    if sender.send(KillCommand).is_ok() {
-                        info!("Client {} - Sent KillCommand to UI", self.id);
-                    } else {
-                        error!("Client {} - Error in sending KillCommand to UI", self.id);
-                    }
-                }
-            }
-        }
-
-        // Send final shutdown event to SC
-        // self.send_to_sc(HostEvent::Stopped(self.id));
     }
 
     pub(crate) fn send_to_sc(&mut self, event: HostEvent) {

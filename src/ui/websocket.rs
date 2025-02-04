@@ -1,6 +1,4 @@
-use crate::client::KillCommand;
 use crate::ui::{CLIENTS_STATE, HTTP_PORT, THREADS};
-use crossbeam_channel::Receiver;
 use log::{error, info};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
@@ -10,17 +8,11 @@ const WEBSOCKET_PORT: u16 = HTTP_PORT + 1;
 
 /// Runs the WebSocket server that handles client connections
 /// and message distribution
-pub(crate) fn run_websocket_server(killer_receiver: Receiver<KillCommand>) {
+pub(crate) fn run_websocket_server() {
     let listener = TcpListener::bind(format!("0.0.0.0:{WEBSOCKET_PORT}")).unwrap();
     listener.set_nonblocking(true).unwrap();
 
     loop {
-        // Check for kill command
-        if killer_receiver.try_recv().is_ok() {
-            info!("[CLIENT-WS] Received kill command, shutting down");
-            break;
-        }
-
         match listener.accept() {
             Ok((ws_stream, _)) => {
                 let web_socket_updates = thread::spawn(move || {
@@ -33,7 +25,6 @@ pub(crate) fn run_websocket_server(killer_receiver: Receiver<KillCommand>) {
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 // No new connections, continue
                 std::thread::sleep(std::time::Duration::from_millis(100));
-                continue;
             }
             Err(e) => {
                 error!("[CLIENT-WS] Failed to accept connection: {}", e);
@@ -48,12 +39,11 @@ pub(crate) fn run_websocket_server(killer_receiver: Receiver<KillCommand>) {
     }
 
     info!("[CLIENT-WS] WebSocket server shutting down");
-    println!("CLIENTS WS SERVER ENDED!! THREAD EXITED");
 }
 
 /// Handles a new WebSocket connection, managing message forwarding
 /// between clients
-/// 
+///
 /// ### Arguments
 /// * `ws_stream` - The WebSocket stream for the new connection
 fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {

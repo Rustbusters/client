@@ -3,7 +3,6 @@ mod request_handler;
 mod utils;
 mod websocket;
 
-use crate::client::KillCommand;
 use crate::RustbustersClient;
 use common_utils::{ClientToServerMessage, ServerToClientMessage};
 use crossbeam_channel::{Receiver, Sender};
@@ -43,18 +42,14 @@ impl RustbustersClient {
         &self,
         sender: Sender<(NodeId, ClientToServerMessage)>,
         receiver: Receiver<(NodeId, ServerToClientMessage)>,
-        killer_receiver: Receiver<KillCommand>,
     ) {
         // log the content of Clients
         let mut clients_state = CLIENTS_STATE.lock().unwrap();
 
         // if it is empty, run the http server
         if clients_state.is_empty() {
-            let temp_receiver = killer_receiver.clone();
-            let http_handle = thread::spawn(move || run_http_server(temp_receiver));
-            let temp_receiver = killer_receiver.clone();
-            let websocket_handle =
-                thread::spawn(move || websocket::run_websocket_server(temp_receiver));
+            let http_handle = thread::spawn(run_http_server);
+            let websocket_handle = thread::spawn(websocket::run_websocket_server);
 
             let mut threads = THREADS.lock().unwrap();
             threads.push(http_handle);
@@ -73,17 +68,11 @@ impl RustbustersClient {
     }
 }
 
-fn run_http_server(killer_receiver: Receiver<KillCommand>) {
+fn run_http_server() {
     println!("[CLIENT-HTTP] Visit http://localhost:{HTTP_PORT} for the client UI");
     let http_server = Server::http(format!("0.0.0.0:{HTTP_PORT}")).unwrap();
 
     loop {
-        // Check for kill command
-        if killer_receiver.try_recv().is_ok() {
-            info!("[CLIENT-HTTP] Received kill command, shutting down");
-            break;
-        }
-
         match http_server.try_recv() {
             Ok(Some(request)) => {
                 if let Err(e) = request_handler::handle_request(request) {
@@ -108,5 +97,4 @@ fn run_http_server(killer_receiver: Receiver<KillCommand>) {
     }
 
     info!("[CLIENT-HTTP] HTTP server shutting down");
-    println!("CLIENTS HTTP SERVER ENDED!! THREAD EXITED");
 }
