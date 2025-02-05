@@ -43,10 +43,11 @@ fn test_edge_stats_ack_handling() {
     client.pending_sent_time.insert(
         session_id,
         (
-            std::time::Instant::now(),
+            4,
             HostMessage::FromClient(ClientToServerMessage::RegisterUser {
                 name: "test".to_string(),
             }),
+            std::time::Instant::now(),
         ),
     );
 

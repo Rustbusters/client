@@ -44,8 +44,10 @@ impl RustbustersClient {
                 };
 
                 // Store the time the message was sent
-                self.pending_sent_time
-                    .insert(session_id, (Instant::now(), message.clone()));
+                self.pending_sent_time.insert(
+                    session_id,
+                    (destination_id, message.clone(), Instant::now()),
+                );
 
                 // Send the packet to the first hop
                 let next_hop = packet.routing_header.hops[1];

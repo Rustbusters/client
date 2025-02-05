@@ -38,10 +38,11 @@ impl RustbustersClient {
                 .pending_sent_time
                 .get(&session_id)
                 .expect("Session not found");
-            let latency = session_info.0.elapsed();
+            let destination = session_info.0;
             let message = session_info.1.clone();
+            let latency = session_info.2.elapsed();
 
-            self.send_to_sc(HostEvent::HostMessageSent(message, latency));
+            self.send_to_sc(HostEvent::HostMessageSent(destination, message, latency));
             self.pending_sent_time.remove(&session_id);
 
             info!(
