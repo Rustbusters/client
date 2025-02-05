@@ -1,13 +1,14 @@
 use crate::client::RustbustersClient;
-use common_utils::{HostEvent, HostMessage, ServerToClientMessage};
+use common_utils::{HostEvent, HostMessage, PacketHeader, PacketTypeHeader, ServerToClientMessage};
 use crossbeam_channel::Sender;
 use log::{debug, info, warn};
+use std::time::Instant;
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Packet, PacketType};
 
 impl RustbustersClient {
     /// Sends a message to a specific destination node using source routing
-    /// 
+    ///
     /// ### Arguments
     /// * `destination_id` - The ID of the destination node
     /// * `message` - The message to be sent
@@ -42,6 +43,12 @@ impl RustbustersClient {
                     session_id,
                 };
 
+                // Store the time the message was sent
+                self.pending_sent_time.insert(
+                    session_id,
+                    (destination_id, message.clone(), Instant::now()),
+                );
+
                 // Send the packet to the first hop
                 let next_hop = packet.routing_header.hops[1];
                 if let Some(sender) = self.packet_send.get(&next_hop) {
@@ -54,7 +61,7 @@ impl RustbustersClient {
                             error: "Failed to send message! Retry in a few seconds".to_string(),
                             message: match message.clone() {
                                 HostMessage::FromClient(client_msg) => client_msg,
-                                _ => return,
+                                _ => unreachable!("Client {}: Invalid message type", self.id),
                             },
                         };
 
@@ -62,15 +69,22 @@ impl RustbustersClient {
                         if ws_to_ui_sender.send((0, error_msg)).is_err() {
                             warn!("Client {}: Unable to send error message to UI", self.id);
                         }
+                    } else {
+                        self.send_to_sc(HostEvent::PacketSent(PacketHeader {
+                            session_id,
+                            pack_type: PacketTypeHeader::MsgFragment,
+                            routing_header: packet.routing_header.clone(),
+                        }));
+                        self.pending_sent
+                            .entry((session_id, fragment_index))
+                            .or_insert(packet);
+                        info!(
+                            "Client {}: Sent PacketSent event for session {} fragment {}",
+                            self.id, session_id, fragment_index
+                        );
                     }
-                    self.pending_sent
-                        .entry((session_id, fragment_index))
-                        .or_insert(packet);
-                    self.stats.inc_fragments_sent();
                 }
             }
-            self.stats.inc_messages_sent();
-            self.send_to_sc(HostEvent::HostMessageSent(message));
 
             info!(
                 "Client {}: Sent message to {} via route {:?}",

@@ -1,9 +1,8 @@
 use crate::client::RustbustersClient;
 use common_utils::{
-    ClientToServerMessage, HostCommand, HostEvent, HostMessage, ServerToClientMessage,
+    ClientToServerMessage, HostCommand, HostMessage, ServerToClientMessage,
 };
 use crossbeam_channel::Sender;
-use log::warn;
 use wg_2024::network::NodeId;
 
 impl RustbustersClient {
@@ -29,17 +28,6 @@ impl RustbustersClient {
             }
             HostCommand::DiscoverNetwork => {
                 self.discover_network();
-            }
-            HostCommand::StatsRequest => {
-                if let Err(err) = self
-                    .controller_send
-                    .send(HostEvent::StatsResponse(self.stats.clone()))
-                {
-                    warn!(
-                        "Client {}: Unable to send StatsResponse(...) to controller: {}",
-                        self.id, err
-                    );
-                }
             }
             HostCommand::AddSender(sender_id, sender) => {
                 self.packet_send.insert(sender_id, sender);

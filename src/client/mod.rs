@@ -7,7 +7,7 @@ mod ui_connector;
 
 use crate::client::routing::edge_stats::EdgeStats;
 use crate::ui::CLIENTS_STATE;
-use common_utils::{HostCommand, HostEvent, Stats};
+use common_utils::{HostCommand, HostEvent, HostMessage};
 use crossbeam_channel::{select_biased, Receiver, Sender};
 use log::{error, info};
 use petgraph::prelude::GraphMap;
@@ -32,9 +32,10 @@ pub struct RustbustersClient {
     session_id_counter: u64,
     // (session_id, fragment_index) -> packet
     pub(crate) pending_sent: HashMap<(u64, u64), Packet>,
+    // session_id -> time_sent
+    pub(crate) pending_sent_time: HashMap<u64, (NodeId, HostMessage, Instant)>,
     // session_id -> (fragments, num_fragments) (u8 is the number of fragments received) (for reassembly)
     pub(crate) pending_received: HashMap<u64, (Vec<Option<Fragment>>, u64)>,
-    stats: Stats,
     edge_stats: HashMap<(NodeId, NodeId), EdgeStats>,
     last_discovery: Instant,
     discovery_interval: Duration,
@@ -66,11 +67,11 @@ impl RustbustersClient {
             flood_id_counter: 73,   // arbitrary value
             session_id_counter: 73, // arbitrary value
             pending_sent: HashMap::new(),
+            pending_sent_time: HashMap::new(),
             pending_received: HashMap::new(),
-            stats: Stats::new(),
             edge_stats: HashMap::new(),
             last_discovery: Instant::now(),
-            discovery_interval
+            discovery_interval,
         }
     }
 

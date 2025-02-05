@@ -1,25 +1,9 @@
 use crate::client::routing::edge_stats::BASE_WEIGHT;
 
 use super::create_test_client;
-use common_utils::{HostCommand, HostEvent};
+use common_utils::HostCommand;
 use crossbeam_channel::unbounded;
-use std::time::Duration;
 use wg_2024::packet::{NodeType, PacketType};
-
-#[test]
-fn test_stats_request() {
-    let (mut client, rx_event, _, _) = create_test_client();
-    let (tx, _) = unbounded();
-
-    client.handle_command(HostCommand::StatsRequest, &tx);
-
-    // Verify that client sends stats response to controller
-    match rx_event.recv_timeout(Duration::from_millis(100)) {
-        Ok(HostEvent::StatsResponse(_)) => (),
-        Ok(other) => panic!("Unexpected event received: {:?}", other),
-        Err(e) => panic!("No stats response received: {}", e),
-    }
-}
 
 #[test]
 fn test_send_random_message() {
@@ -68,7 +52,7 @@ fn test_discover_network() {
     let (mut client, _, _, _) = create_test_client();
     let (tx, _) = unbounded();
     let (packet_2_tx, packet_2_rx) = unbounded();
-    
+
     // Setup topology
     client.topology.add_node(2);
     client
@@ -77,20 +61,20 @@ fn test_discover_network() {
         .unwrap()
         .insert(2, NodeType::Drone);
     client.packet_send.insert(2, packet_2_tx);
-    
+
     client.handle_command(HostCommand::DiscoverNetwork, &tx);
-    
+
     // Verify that discovery packets are sent to neighbors
     if let Ok(packet) = packet_2_rx.try_recv() {
-		if let PacketType::FloodRequest(flood_request) = packet.pack_type {
-			assert_eq!(flood_request.initiator_id, 1);
-			assert_eq!(flood_request.path_trace, vec![(1, NodeType::Client)]);
-		} else {
-			panic!("Unexpected packet type received");
-		}
-	} else {
-		panic!("No discovery packet was sent");
-	}
+        if let PacketType::FloodRequest(flood_request) = packet.pack_type {
+            assert_eq!(flood_request.initiator_id, 1);
+            assert_eq!(flood_request.path_trace, vec![(1, NodeType::Client)]);
+        } else {
+            panic!("Unexpected packet type received");
+        }
+    } else {
+        panic!("No discovery packet was sent");
+    }
 }
 
 #[test]
@@ -99,15 +83,19 @@ fn test_add_remove_sender() {
     let (tx, _) = unbounded();
     let (sender, receiver) = unbounded();
     let sender_id = 3;
-    
+
     // Setup topology for the new node
     client.topology.add_node(sender_id);
-    client.known_nodes.lock().unwrap().insert(sender_id, NodeType::Drone);
-    
+    client
+        .known_nodes
+        .lock()
+        .unwrap()
+        .insert(sender_id, NodeType::Drone);
+
     // Test Add Sender
     client.handle_command(HostCommand::AddSender(sender_id, sender.clone()), &tx);
     assert!(client.packet_send.contains_key(&sender_id));
-    
+
     // Verify that discovery packet was sent to the new sender
     if let Ok(packet) = receiver.try_recv() {
         if let PacketType::FloodRequest(flood_request) = packet.pack_type {
@@ -119,16 +107,20 @@ fn test_add_remove_sender() {
     } else {
         panic!("No discovery packet was sent after add");
     }
-    
+
     // Test Remove Sender and verify discovery is triggered
     let (new_sender, new_receiver) = unbounded();
     client.packet_send.insert(2, new_sender); // Add another node to receive discovery after remove
     client.topology.add_node(2);
-    client.known_nodes.lock().unwrap().insert(2, NodeType::Drone);
-    
+    client
+        .known_nodes
+        .lock()
+        .unwrap()
+        .insert(2, NodeType::Drone);
+
     client.handle_command(HostCommand::RemoveSender(sender_id), &tx);
     assert!(!client.packet_send.contains_key(&sender_id));
-    
+
     // Verify that discovery packet was sent to remaining nodes
     if let Ok(packet) = new_receiver.try_recv() {
         if let PacketType::FloodRequest(flood_request) = packet.pack_type {

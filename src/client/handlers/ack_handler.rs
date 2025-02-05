@@ -1,4 +1,5 @@
 use crate::client::RustbustersClient;
+use common_utils::HostEvent;
 use log::{info, warn};
 
 impl RustbustersClient {
@@ -14,9 +15,6 @@ impl RustbustersClient {
     /// * `session_id` - The ID of the message session
     /// * `fragment_index` - The index of the acknowledged fragment
     pub(crate) fn handle_ack(&mut self, session_id: u64, fragment_index: u64) {
-        // Update stats
-        self.stats.inc_acks_received();
-
         // Remove the acked fragment from the pending_sent list
         let acked = self.pending_sent.remove(&(session_id, fragment_index));
         if let Some(packet) = acked {
@@ -36,6 +34,17 @@ impl RustbustersClient {
             .collect::<Vec<_>>()
             .is_empty()
         {
+            let session_info = self
+                .pending_sent_time
+                .get(&session_id)
+                .expect("Session not found");
+            let destination = session_info.0;
+            let message = session_info.1.clone();
+            let latency = session_info.2.elapsed();
+
+            self.send_to_sc(HostEvent::HostMessageSent(destination, message, latency));
+            self.pending_sent_time.remove(&session_id);
+
             info!(
                 "Client {}: All fragments of session {} acked",
                 self.id, session_id

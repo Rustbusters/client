@@ -1,7 +1,7 @@
 use crate::client::RustbustersClient;
-use common_utils::HostEvent::{ControllerShortcut, HostMessageReceived};
+use common_utils::HostEvent::{ControllerShortcut, PacketSent};
 use common_utils::HostMessage::FromServer;
-use common_utils::ServerToClientMessage;
+use common_utils::{PacketHeader, PacketTypeHeader, ServerToClientMessage};
 use crossbeam_channel::Sender;
 use log::{info, warn};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
@@ -28,9 +28,6 @@ impl RustbustersClient {
         source_routing_header: &SourceRoutingHeader,
         sender: &Sender<(NodeId, ServerToClientMessage)>,
     ) {
-        // Update stats
-        self.stats.inc_fragments_received();
-
         let source = *source_routing_header.hops.first().unwrap();
 
         // If after insert all fragments of the session are received, reassemble the message
@@ -41,7 +38,6 @@ impl RustbustersClient {
                         "Client {}: Received full message {:?} of session {}",
                         self.id, msg, session_id
                     );
-                    self.stats.inc_messages_received();
 
                     if let FromServer(s2c_msg) = &msg {
                         if sender.send((source, s2c_msg.clone())).is_err() {
@@ -51,13 +47,6 @@ impl RustbustersClient {
                         warn!(
                             "Client {}: Received message that is from another client",
                             self.id
-                        );
-                    }
-
-                    if let Err(err) = self.controller_send.send(HostMessageReceived(msg)) {
-                        warn!(
-                            "Client {}: Unable to send MessageReceived(...) to controller: {}",
-                            self.id, err
                         );
                     }
                 }
@@ -80,7 +69,7 @@ impl RustbustersClient {
                     .hops
                     .iter()
                     .rev()
-                    .cloned()
+                    .copied()
                     .collect::<Vec<NodeId>>(),
             },
             session_id,
@@ -95,11 +84,9 @@ impl RustbustersClient {
                     "Client {}: Error sending Ack for fragment {} to {}: {}",
                     self.id, fragment_index, next_hop, err
                 );
-                self.send_to_sc(ControllerShortcut(ack_packet));
+                self.send_to_sc(ControllerShortcut(ack_packet.clone()));
                 info!("Client {}: Sending ack through SC", self.id);
             } else {
-                // Increment the number of sent Acks
-                self.stats.inc_acks_sent();
                 info!(
                     "Client {}: Sent Ack for fragment {} to {}",
                     self.id, fragment_index, next_hop
@@ -110,8 +97,13 @@ impl RustbustersClient {
                 "Client {}: Cannot send Ack for fragment {} to {}",
                 self.id, fragment_index, next_hop
             );
-            self.send_to_sc(ControllerShortcut(ack_packet))
+            self.send_to_sc(ControllerShortcut(ack_packet.clone()));
         }
+        self.send_to_sc(PacketSent(PacketHeader {
+            session_id,
+            pack_type: PacketTypeHeader::Ack,
+            routing_header: ack_packet.routing_header.clone(),
+        }));
     }
 
     /// Stores a fragment in the pending received collection.
