@@ -1,5 +1,6 @@
 use crate::ui::{CLIENTS_STATE, HTTP_PORT, THREADS};
-use log::{error, info};
+use crossbeam_channel::TryRecvError;
+use log::{error, info, warn};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use tungstenite::{Error, Message, WebSocket};
@@ -17,7 +18,9 @@ pub(crate) fn run_websocket_server() {
             Ok((ws_stream, _)) => {
                 let web_socket_updates = thread::spawn(move || {
                     if let Ok(web_socket_stream) = tungstenite::accept(ws_stream) {
-                        handle_new_connection(web_socket_stream);
+                        if let Err(e) = handle_new_connection(web_socket_stream) {
+                            error!("[CLIENT-WS] Connection error: {}", e);
+                        }
                     }
                 });
                 THREADS.lock().unwrap().push(web_socket_updates);
@@ -46,33 +49,50 @@ pub(crate) fn run_websocket_server() {
 ///
 /// ### Arguments
 /// * `ws_stream` - The WebSocket stream for the new connection
-fn handle_new_connection(mut ws_stream: WebSocket<TcpStream>) {
+fn handle_new_connection(
+    mut ws_stream: WebSocket<TcpStream>,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("[CLIENT-WS] New WebSocket connection");
-    ws_stream.get_ref().set_nonblocking(true).unwrap();
+    ws_stream.get_ref().set_nonblocking(true)?;
 
     loop {
-        let clients = CLIENTS_STATE.lock().unwrap().clone();
-        for (client_id, client_state) in &clients {
+        let clients = CLIENTS_STATE.lock().map_err(|_| "Failed to acquire lock")?;
+        for (client_id, client_state) in &*clients {
             if let Some(receiver) = &client_state.receiver {
-                if let Ok(msg) = receiver.try_recv() {
-                    let ws_message = format!(
-                        "{{\"client_id\":{client_id},\"server_id\": {},\"message\":{}}}",
-                        msg.0,
-                        serde_json::to_string(&msg.1).expect("Should be serializable")
-                    );
-                    if let Err(e) = ws_stream.send(Message::Text(ws_message.into())) {
-                        eprintln!("[CLIENT-WS] Failed to send message: {e:?}");
+                match receiver.try_recv() {
+                    Ok(msg) => {
+                        let ws_message = serde_json::json!({
+                            "client_id": client_id,
+                            "server_id": msg.0,
+                            "message": msg.1
+                        })
+                        .to_string();
+
+                        ws_stream
+                            .send(Message::Text(ws_message.into()))
+                            .map_err(|e| {
+                                warn!("[CLIENT-WS] Failed to send message: {e:?}");
+                                e
+                            })?;
                     }
-                    ws_stream.flush().unwrap();
+                    Err(TryRecvError::Empty) => { /* CONTINUE */ }
+                    Err(TryRecvError::Disconnected) => {
+                        warn!("[CLIENT-WS] Channel disconnected for client {}", client_id);
+                    }
                 }
             }
         }
         drop(clients);
 
-        if let Err(Error::ConnectionClosed | Error::AlreadyClosed) = ws_stream.read() {
-            break;
+        match ws_stream.read() {
+            Err(Error::ConnectionClosed | Error::AlreadyClosed) => break,
+            Err(e) => {
+                warn!("[CLIENT-WS] WebSocket error: {}", e);
+            }
+            Ok(_) => continue,
         }
     }
 
     info!("[CLIENT-WS] WebSocket connection closed");
+    Ok(())
 }
