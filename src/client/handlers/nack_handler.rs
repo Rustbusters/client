@@ -38,7 +38,7 @@ impl RustbustersClient {
                     self.update_edge_stats_on_nack(&nack_header.hops);
 
                     // Find a better path to reduce the probability of dropping the fragment
-                    self.reroute_packet(&mut packet, fragment_index, &nack_header);
+                    self.reroute_packet(&mut packet, fragment_index, nack_header);
 
                     // Resend the fragment
                     if let Some(sender) = self.packet_send.get(&packet.routing_header.hops[1]) {
@@ -63,6 +63,9 @@ impl RustbustersClient {
                                 self.id, fragment_index, nack_type
                             );
                             self.topology.remove_node(drone);
+                            self.edge_stats
+                                .retain(|(from, to), _| *from != drone && *to != drone);
+                            self.known_nodes.lock().unwrap().remove(&drone);
                         }
                         NackType::DestinationIsDrone | NackType::UnexpectedRecipient(_) => {
                             warn!(

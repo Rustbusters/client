@@ -4,7 +4,7 @@ use std::collections::{BinaryHeap, HashMap};
 use wg_2024::network::NodeId;
 use wg_2024::packet::NodeType;
 
-/// Wrapper around f32 to implement Ord for use in BinaryHeap
+/// Wrapper around f32 to implement Ord for use in `BinaryHeap`
 /// Reverses comparison to create a min-heap instead of max-heap
 #[derive(Debug, Copy, Clone, PartialEq)]
 struct FloatKey(f32);
@@ -26,7 +26,7 @@ impl Ord for FloatKey {
 
 impl RustbustersClient {
     /// Finds the shortest weighted path to a destination node using Dijkstra's algorithm.
-    /// 
+    ///
     /// # Arguments
     /// * `dst` - Destination node ID
     ///
@@ -47,7 +47,7 @@ impl RustbustersClient {
         heap.push((FloatKey(0.0), self.id));
 
         while let Some((FloatKey(cost), node)) = heap.pop() {
-            // If we reached the destination and it's a server, build the path
+            // If we reached the destination, and it's a server, build the path
             if node == dst {
                 return if let Some(NodeType::Server) = self.get_node_type(node) {
                     let mut path = Vec::new();

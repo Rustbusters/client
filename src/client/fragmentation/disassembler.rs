@@ -23,7 +23,7 @@ impl RustbustersClient {
 
         // Fragment the data into chunks of FRAGMENT_DSIZE bytes
         let total_size = bytes.len();
-        let total_n_fragments = ((total_size + FRAGMENT_DSIZE - 1) / FRAGMENT_DSIZE) as u64;
+        let total_n_fragments = total_size.div_ceil(FRAGMENT_DSIZE) as u64;
 
         let mut fragments = Vec::new();
         for (i, chunk) in bytes.chunks(FRAGMENT_DSIZE).enumerate() {
