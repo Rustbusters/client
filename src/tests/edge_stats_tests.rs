@@ -1,4 +1,5 @@
 use crate::tests::create_test_client;
+use common_utils::{ClientToServerMessage, HostMessage};
 use wg_2024::network::SourceRoutingHeader;
 use wg_2024::packet::{Fragment, NackType, Packet, PacketType};
 
@@ -39,6 +40,15 @@ fn test_edge_stats_ack_handling() {
     client
         .pending_sent
         .insert((session_id, fragment_index), packet);
+    client.pending_sent_time.insert(
+        session_id,
+        (
+            std::time::Instant::now(),
+            HostMessage::FromClient(ClientToServerMessage::RegisterUser {
+                name: "test".to_string(),
+            }),
+        ),
+    );
 
     // Handle ACK
     client.handle_ack(session_id, fragment_index);
@@ -74,7 +84,7 @@ fn test_edge_stats_nack_handling() {
     };
 
     // Handle NACK
-    client.handle_nack(session_id, fragment_index, NackType::Dropped, nack_header);
+    client.handle_nack(session_id, fragment_index, NackType::Dropped, &nack_header);
 
     // Verify edge stats for the dropping edge
     let stats = client.get_or_create_edge_stats(path[0], path[1]);
@@ -104,12 +114,7 @@ fn test_edge_stats_multiple_nacks() {
 
     // Send multiple NACKs
     for _ in 0..3 {
-        client.handle_nack(
-            session_id,
-            fragment_index,
-            NackType::Dropped,
-            nack_header.clone(),
-        );
+        client.handle_nack(session_id, fragment_index, NackType::Dropped, &nack_header);
     }
 
     // Verify edge stats show deteriorating condition

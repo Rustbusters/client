@@ -1,6 +1,7 @@
 use crate::client::routing::edge_stats::BASE_WEIGHT;
 use crate::client::RustbustersClient;
-use common_utils::HostEvent::ControllerShortcut;
+use common_utils::HostEvent::{ControllerShortcut, PacketSent};
+use common_utils::{PacketHeader, PacketTypeHeader};
 use log::info;
 use log::warn;
 use wg_2024::network::SourceRoutingHeader;
@@ -94,14 +95,19 @@ impl RustbustersClient {
                     "Client {}: Error sending FloodResponse to initiator {}: {}",
                     self.id, flood_request.initiator_id, err
                 );
-                self.send_to_sc(ControllerShortcut(response_packet));
+                self.send_to_sc(ControllerShortcut(response_packet.clone()));
             }
         } else {
             warn!(
                 "Client {}: Cannot send FloodResponse to initiator {}",
                 self.id, flood_request.initiator_id
             );
-            self.send_to_sc(ControllerShortcut(response_packet));
+            self.send_to_sc(ControllerShortcut(response_packet.clone()));
         }
+        self.send_to_sc(PacketSent(PacketHeader {
+            session_id,
+            pack_type: PacketTypeHeader::FloodResponse,
+            routing_header: response_packet.routing_header.clone(),
+        }));
     }
 }

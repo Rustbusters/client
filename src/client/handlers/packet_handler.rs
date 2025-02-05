@@ -7,7 +7,7 @@ use wg_2024::packet::{Packet, PacketType};
 
 impl RustbustersClient {
     /// Handles incoming packets based on their type.
-    /// 
+    ///
     /// This is the main entry point for packet processing in the client. It delegates
     /// the handling to specific handlers based on the packet type:
     /// - FloodRequest: Used for network topology discovery
@@ -63,7 +63,12 @@ impl RustbustersClient {
             PacketType::Nack(nack) => {
                 // Handle Negative Acknowledgments
                 info!("Client {}: Received Nack {nack:?}", self.id);
-                self.handle_nack(packet.session_id, nack.fragment_index, nack.nack_type, packet.routing_header);
+                self.handle_nack(
+                    packet.session_id,
+                    nack.fragment_index,
+                    nack.nack_type,
+                    &packet.routing_header,
+                );
             }
         }
     }

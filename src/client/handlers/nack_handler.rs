@@ -1,4 +1,5 @@
 use crate::client::RustbustersClient;
+use common_utils::{HostEvent, PacketHeader, PacketTypeHeader};
 use log::{info, warn};
 use wg_2024::network::SourceRoutingHeader;
 use wg_2024::packet::NackType::Dropped;
@@ -22,11 +23,8 @@ impl RustbustersClient {
         session_id: u64,
         fragment_index: u64,
         nack_type: NackType,
-        nack_header: SourceRoutingHeader,
+        nack_header: &SourceRoutingHeader,
     ) {
-        // Update stats
-        self.stats.inc_nacks_received();
-
         match self
             .pending_sent
             .get(&(session_id, fragment_index))
@@ -50,7 +48,11 @@ impl RustbustersClient {
                                 self.id, fragment_index, err
                             );
                         } else {
-                            self.stats.inc_fragments_sent();
+                            self.send_to_sc(HostEvent::PacketSent(PacketHeader {
+                                session_id,
+                                pack_type: PacketTypeHeader::MsgFragment,
+                                routing_header: packet.routing_header.clone(),
+                            }));
                         }
                     }
                 } else {
@@ -90,7 +92,12 @@ impl RustbustersClient {
     /// * `packet` - The packet to be rerouted
     /// * `fragment_index` - The index of the fragment being rerouted
     /// * `nack_header` - The source routing header of the NACK
-    fn reroute_packet(&mut self, packet: &mut Packet, fragment_index: u64, nack_header: &SourceRoutingHeader) {
+    fn reroute_packet(
+        &mut self,
+        packet: &mut Packet,
+        fragment_index: u64,
+        nack_header: &SourceRoutingHeader,
+    ) {
         let drop_from = nack_header.hops[0];
         let drop_to = nack_header.hops[1];
 

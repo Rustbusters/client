@@ -1,4 +1,5 @@
 use crate::client::RustbustersClient;
+use common_utils::{HostEvent, PacketHeader, PacketTypeHeader};
 use log::{info, warn};
 use wg_2024::network::SourceRoutingHeader;
 use wg_2024::packet::NodeType::Client;
@@ -6,7 +7,7 @@ use wg_2024::packet::{FloodRequest, Packet, PacketType};
 
 impl RustbustersClient {
     /// Initiates network discovery by flooding FloodRequest packets.
-    /// 
+    ///
     /// This function:
     /// 1. Generates a unique flood ID
     /// 2. Creates a FloodRequest packet with the client's path trace
@@ -36,7 +37,8 @@ impl RustbustersClient {
             session_id: 0,
         };
 
-        for (&neighbor_id, neighbor_sender) in &self.packet_send {
+        let packet_senders = self.packet_send.clone();
+        for (neighbor_id, neighbor_sender) in packet_senders {
             info!(
                 "Client {}: Sending FloodRequest to {} with flood_id {}",
                 self.id, neighbor_id, flood_id
@@ -46,6 +48,12 @@ impl RustbustersClient {
                     "Client {}: Unable to send FloodRequest to {}: {}",
                     self.id, neighbor_id, err
                 );
+            } else {
+                self.send_to_sc(HostEvent::PacketSent(PacketHeader {
+                    session_id: 0,
+                    pack_type: PacketTypeHeader::FloodRequest,
+                    routing_header: packet.routing_header.clone(),
+                }));
             }
         }
     }
