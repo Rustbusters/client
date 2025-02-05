@@ -58,6 +58,10 @@ impl RustbustersClient {
                 } else {
                     match nack_type {
                         NackType::ErrorInRouting(drone) => {
+                            println!(
+                                "Client {}: Nack for fragment {} with type {:?}",
+                                self.id, fragment_index, nack_type
+                            );
                             warn!(
                                 "Client {}: Nack for fragment {} with type {:?}",
                                 self.id, fragment_index, nack_type
@@ -66,6 +70,42 @@ impl RustbustersClient {
                             self.edge_stats
                                 .retain(|(from, to), _| *from != drone && *to != drone);
                             self.known_nodes.lock().unwrap().remove(&drone);
+
+                            // Find a better path to reduce the probability of dropping the fragment
+                            self.reroute_packet(&mut packet, fragment_index, nack_header);
+
+                            if let Some(new_path) =
+                                self.find_weighted_path(*packet.routing_header.hops.last().unwrap())
+                            {
+                                // If there is a better path, reroute the packet
+                                if new_path != packet.routing_header.hops {
+                                    info!(
+                                        "Client {}: Rerouting packet for session {} fragment {} from path {:?} to {:?}",
+                                        self.id, packet.session_id, fragment_index, packet.routing_header.hops, new_path
+                                    );
+
+                                    // Update the packet's path
+                                    packet.routing_header.hops = new_path;
+                                    packet.routing_header.hop_index = 1;
+                                }
+                            }
+                            // Resend the fragment
+                            if let Some(sender) =
+                                self.packet_send.get(&packet.routing_header.hops[1])
+                            {
+                                if let Err(err) = sender.send(packet.clone()) {
+                                    warn!(
+                                        "Client {}: Unable to resend fragment {}: {}",
+                                        self.id, fragment_index, err
+                                    );
+                                } else {
+                                    self.send_to_sc(HostEvent::PacketSent(PacketHeader {
+                                        session_id,
+                                        pack_type: PacketTypeHeader::MsgFragment,
+                                        routing_header: packet.routing_header.clone(),
+                                    }));
+                                }
+                            }
                         }
                         NackType::DestinationIsDrone | NackType::UnexpectedRecipient(_) => {
                             warn!(

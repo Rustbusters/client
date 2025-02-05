@@ -1,7 +1,5 @@
 use crate::client::RustbustersClient;
-use common_utils::{
-    ClientToServerMessage, HostCommand, HostMessage, ServerToClientMessage,
-};
+use common_utils::{ClientToServerMessage, HostCommand, HostMessage, ServerToClientMessage};
 use crossbeam_channel::Sender;
 use wg_2024::network::NodeId;
 
@@ -35,6 +33,8 @@ impl RustbustersClient {
             }
             HostCommand::RemoveSender(sender_id) => {
                 self.packet_send.remove(&sender_id);
+                self.topology.remove_edge(self.id, sender_id);
+                self.edge_stats.remove(&(self.id, sender_id));
                 self.discover_network();
             }
             _ => {
