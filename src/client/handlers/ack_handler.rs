@@ -35,7 +35,7 @@ impl RustbustersClient {
             .is_empty()
         {
             let session_info = self
-                .pending_sent_time
+                .pending_session_info
                 .get(&session_id)
                 .expect("Session not found");
             let destination = session_info.0;
@@ -43,7 +43,7 @@ impl RustbustersClient {
             let latency = session_info.2.elapsed();
 
             self.send_to_sc(HostEvent::HostMessageSent(destination, message, latency));
-            self.pending_sent_time.remove(&session_id);
+            self.pending_session_info.remove(&session_id);
 
             info!(
                 "Client {}: All fragments of session {} acked",

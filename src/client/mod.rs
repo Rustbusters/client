@@ -33,7 +33,7 @@ pub struct RustbustersClient {
     // (session_id, fragment_index) -> packet
     pub(crate) pending_sent: HashMap<(u64, u64), Packet>,
     // session_id -> time_sent
-    pub(crate) pending_sent_time: HashMap<u64, (NodeId, HostMessage, Instant)>,
+    pub(crate) pending_session_info: HashMap<u64, (NodeId, HostMessage, Instant)>,
     // session_id -> (fragments, num_fragments) (u8 is the number of fragments received) (for reassembly)
     pub(crate) pending_received: HashMap<u64, (Vec<Option<Fragment>>, u64)>,
     edge_stats: HashMap<(NodeId, NodeId), EdgeStats>,
@@ -67,7 +67,7 @@ impl RustbustersClient {
             flood_id_counter: 73,   // arbitrary value
             session_id_counter: 73, // arbitrary value
             pending_sent: HashMap::new(),
-            pending_sent_time: HashMap::new(),
+            pending_session_info: HashMap::new(),
             pending_received: HashMap::new(),
             edge_stats: HashMap::new(),
             last_discovery: Instant::now(),
