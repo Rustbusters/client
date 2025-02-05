@@ -45,7 +45,7 @@ impl RustbustersClient {
                 };
 
                 // Store the time the message was sent
-                self.pending_sent_time.insert(
+                self.pending_session_info.insert(
                     session_id,
                     (destination_id, message.clone(), Instant::now()),
                 );

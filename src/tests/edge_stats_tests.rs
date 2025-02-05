@@ -40,7 +40,7 @@ fn test_edge_stats_ack_handling() {
     client
         .pending_sent
         .insert((session_id, fragment_index), packet);
-    client.pending_sent_time.insert(
+    client.pending_session_info.insert(
         session_id,
         (
             4,
