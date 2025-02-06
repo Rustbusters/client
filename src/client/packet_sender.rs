@@ -21,7 +21,6 @@ impl RustbustersClient {
     ) {
         // Compute the route to the destination
         if let Some(route) = self.find_weighted_path(destination_id) {
-            println!("Route: {route:?}",);
             // Increment session_id_counter
             self.session_id_counter += 1;
             let session_id = self.session_id_counter;
