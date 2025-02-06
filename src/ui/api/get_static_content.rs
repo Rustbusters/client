@@ -5,13 +5,13 @@ use std::io::Cursor;
 use std::str::FromStr;
 use tiny_http::{Header, Response};
 
-const STATIC_PATH: &str = "static/client/frontend/dist";
+const STATIC_PATH: &str = "static/client/frontend/client-build";
 
 /// Serves static files from the filesystem
-/// 
+///
 /// ### Arguments
 /// * `path` - The requested file path
-/// 
+///
 /// Returns an HTTP response containing the file content or an error
 pub(crate) fn provide_static_file(path: &str) -> Response<Cursor<Vec<u8>>> {
     let sanitized_path = &path[1..]; // Remove initial slash
