@@ -3,6 +3,8 @@ use crossbeam_channel::TryRecvError;
 use log::{error, info, warn};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
+use std::thread::sleep;
+use std::time::Duration;
 use tungstenite::{Error, Message, WebSocket};
 
 const WEBSOCKET_PORT: u16 = HTTP_PORT + 1;
@@ -86,6 +88,9 @@ fn handle_new_connection(
 
         match ws_stream.read() {
             Err(Error::ConnectionClosed | Error::AlreadyClosed) => break,
+            Err(Error::Io(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                sleep(Duration::from_millis(50));
+            }
             Err(e) => {
                 warn!("[CLIENT-WS] WebSocket error: {}", e);
             }
