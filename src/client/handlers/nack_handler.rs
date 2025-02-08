@@ -77,7 +77,7 @@ impl RustbustersClient {
     /// ### Arguments
     /// * `packet` - The packet to be rerouted and resent
     /// * `fragment_index` - The index of the fragment
-    /// * `force_reroute` - Whether to force rerouting regardless of conditions
+    /// * `force_reroute` - Whether to force rerouting
     fn reroute_and_resend(
         &mut self,
         packet: &mut Packet,

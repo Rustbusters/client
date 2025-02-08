@@ -38,7 +38,7 @@ impl RustbustersClient {
     /// - Client can only connect to Drones
     /// - Drones can connect to other Drones or Servers
     /// - Server must be the final destination
-    pub(crate) fn find_weighted_path(&self, dst: NodeId) -> Option<Vec<NodeId>> {
+    pub(crate) fn find_weighted_path(&mut self, dst: NodeId) -> Option<Vec<NodeId>> {
         let mut distance: HashMap<NodeId, f32> = HashMap::new();
         let mut heap: BinaryHeap<(FloatKey, NodeId)> = BinaryHeap::new();
         let mut prev: HashMap<NodeId, NodeId> = HashMap::new();
@@ -95,6 +95,7 @@ impl RustbustersClient {
             }
         }
 
+        self.discover_network();
         None
     }
 
