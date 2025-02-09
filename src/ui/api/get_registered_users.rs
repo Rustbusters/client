@@ -6,7 +6,7 @@ use tiny_http::Response;
 use wg_2024::network::NodeId;
 
 /// Requests the list of registered users from a specific server
-/// 
+///
 /// ### Arguments
 /// * `query_params` - HashMap containing query parameters, must include both 'client_id' and 'server_id'
 pub(crate) fn get_registered_users(
@@ -16,20 +16,22 @@ pub(crate) fn get_registered_users(
     let client_id = query_params
         .as_ref()
         .and_then(|params| params.get("client_id"))
-        .and_then(|id_str| id_str.parse::<NodeId>().ok())
-        .unwrap_or(0);
+        .and_then(|id_str| id_str.parse::<NodeId>().ok());
     let server_id = query_params
         .as_ref()
         .and_then(|params| params.get("server_id"))
-        .and_then(|id_str| id_str.parse::<NodeId>().ok())
-        .unwrap_or(0);
+        .and_then(|id_str| id_str.parse::<NodeId>().ok());
 
-    if client_id == 0 || server_id == 0 {
+    if client_id.is_none() || server_id.is_none() {
         return Response::from_string(
             "Invalid or missing 'client_id' or 'server_id' query parameter",
         )
         .with_status_code(400);
     }
+
+    let client_id = client_id.unwrap();
+    let server_id = server_id.unwrap();
+
     // get the sender of the client node
     let client_sender = CLIENTS_STATE
         .lock()
