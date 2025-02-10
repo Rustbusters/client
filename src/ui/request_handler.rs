@@ -15,8 +15,6 @@ pub(crate) fn handle_request(mut req: Request) -> Result<(), Error> {
     let full_url = req.url(); // Include sia il path che i query parameters
     let path = full_url.split('?').next().unwrap_or("/"); // Ottieni solo il path
 
-    println!("Full: {full_url} - Path: {path}");
-
     // Parsing della query string (se esiste)
     let query_params: Option<HashMap<String, String>> = full_url.find('?').map(|pos| {
         full_url[pos + 1..]

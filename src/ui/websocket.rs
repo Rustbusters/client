@@ -29,7 +29,7 @@ pub(crate) fn run_websocket_server() {
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 // No new connections, continue
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                sleep(Duration::from_millis(100));
             }
             Err(e) => {
                 error!("[CLIENT-WS] Failed to accept connection: {}", e);

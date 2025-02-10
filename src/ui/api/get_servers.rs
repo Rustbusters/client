@@ -13,8 +13,6 @@ use wg_2024::packet::NodeType;
 pub(crate) fn get_servers(
     query_params: &Option<HashMap<String, String>>,
 ) -> Response<Cursor<Vec<u8>>> {
-    println!("GET /api/servers");
-    println!("{query_params:?}",);
     // Get the 'id' parameter from query string
     let id = query_params
         .as_ref()
