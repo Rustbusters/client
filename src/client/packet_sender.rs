@@ -83,6 +83,8 @@ impl RustbustersClient {
                             self.id, session_id, fragment_index
                         );
                     }
+                } else {
+                    warn!("Client {}: No sender for next hop {}", self.id, next_hop);
                 }
             }
 
